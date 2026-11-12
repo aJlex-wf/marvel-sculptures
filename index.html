@@ -77,65 +77,10 @@
         </dl>
       </div>
 
-      <div class="hero__piece" aria-hidden="true">
-        <div class="piece__glow"></div>
-        <svg class="piece" viewBox="0 0 420 520" role="presentation">
-          <defs>
-            <linearGradient id="coreG" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#ffd166"/>
-              <stop offset=".42" stop-color="#e62429"/>
-              <stop offset="1" stop-color="#5b1020"/>
-            </linearGradient>
-            <linearGradient id="steelG" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#f3f6ff"/>
-              <stop offset=".35" stop-color="#8d97ad"/>
-              <stop offset=".6" stop-color="#2b3140"/>
-              <stop offset="1" stop-color="#6d7689"/>
-            </linearGradient>
-            <linearGradient id="steelG2" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0" stop-color="#20242f"/>
-              <stop offset=".5" stop-color="#7d879c"/>
-              <stop offset="1" stop-color="#e9eefb"/>
-            </linearGradient>
-            <radialGradient id="auraG" cx=".5" cy=".5" r=".5">
-              <stop offset="0" stop-color="#e62429" stop-opacity=".5"/>
-              <stop offset="1" stop-color="#e62429" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-
-          <ellipse cx="210" cy="236" rx="195" ry="195" fill="url(#auraG)"/>
-
-          <g class="piece__rings">
-            <ellipse class="ring ring--1" cx="210" cy="240" rx="172" ry="56" fill="none" stroke="url(#steelG2)" stroke-width="3" stroke-dasharray="10 14"/>
-            <ellipse class="ring ring--2" cx="210" cy="236" rx="132" ry="132" fill="none" stroke="url(#steelG)" stroke-width="2.5" stroke-dasharray="4 12"/>
-            <ellipse class="ring ring--3" cx="210" cy="236" rx="84" ry="172" fill="none" stroke="url(#steelG2)" stroke-width="2" stroke-dasharray="18 9"/>
-          </g>
-
-          <g class="piece__core">
-            <polygon class="core__poly" points="210,118 272,168 258,254 210,312 162,254 148,168" fill="url(#coreG)" opacity=".92"/>
-            <polygon class="core__poly core__poly--b" points="210,118 272,168 258,254 210,312 162,254 148,168" fill="none" stroke="#ffe9b0" stroke-width="1.6" opacity=".5"/>
-            <polygon class="core__poly core__poly--c" points="210,160 246,190 236,240 210,268 184,240 174,190" fill="#ffe9b0" opacity=".16"/>
-          </g>
-
-          <g class="piece__nodes">
-            <circle class="node node--1" cx="210" cy="64" r="7"/>
-            <circle class="node node--2" cx="342" cy="236" r="5"/>
-            <circle class="node node--3" cx="78" cy="236" r="5"/>
-            <circle class="node node--4" cx="140" cy="392" r="4"/>
-            <circle class="node node--5" cx="286" cy="86" r="3.5"/>
-          </g>
-
-          <g class="piece__arc">
-            <path d="M116 186 L144 222 L136 230 L176 274 L168 282 L208 322" fill="none" stroke="#ffe9b0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
-          </g>
-
-          <g class="piece__base">
-            <ellipse cx="210" cy="438" rx="118" ry="24" fill="#0d1018" stroke="rgba(255,255,255,.12)"/>
-            <path d="M92 438 L102 486 L318 486 L328 438" fill="#0a0d14" stroke="rgba(255,255,255,.1)"/>
-            <ellipse cx="210" cy="486" rx="108" ry="18" fill="#080a10" stroke="rgba(255,255,255,.1)"/>
-            <text x="210" y="493" text-anchor="middle" class="piece__label">КИНЕТИЧЕСКИЙ ОБРАЗЕЦ № 00</text>
-          </g>
-        </svg>
+      <div class="hero__piece">
+        <div class="piece__glow" aria-hidden="true"></div>
+        <canvas class="piece" id="piece" width="1040" height="1240" aria-label="Интерактивная 3D-модель кинетического ядра: вращающиеся кольца и пыль, реагирующие на курсор"></canvas>
+        <p class="piece__caption"><span></span>Образец 00 · Кинетическое ядро</p>
       </div>
     </div>
 

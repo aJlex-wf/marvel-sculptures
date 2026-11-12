@@ -243,42 +243,33 @@ body[data-motion="off"] .icon-btn__glyph::after { opacity: 0; }
   font-weight: 600; line-height: 1;
 }
 
-/* hero kinetic piece */
+/* hero kinetic core */
 .hero__piece { position: relative; display: grid; place-items: center; }
 .piece__glow {
   position: absolute; width: 78%; aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(circle, rgba(230, 36, 41, .34), transparent 66%);
+  background: radial-gradient(circle, rgba(230, 36, 41, .3), transparent 66%);
   filter: blur(28px); animation: breathe 7s ease-in-out infinite;
 }
 @keyframes breathe {
   0%, 100% { transform: scale(.92); opacity: .75; }
   50%      { transform: scale(1.08); opacity: 1; }
 }
-.piece { width: min(100%, 470px); height: auto; overflow: visible; }
-.piece__label {
-  font-family: var(--display); font-size: 10px; letter-spacing: .15em;
-  fill: var(--muted-2); text-transform: uppercase;
+.piece {
+  position: relative;
+  width: min(100%, 540px); aspect-ratio: 1 / 1;
+  display: block; cursor: crosshair;
+  touch-action: pan-y;
 }
-.ring { transform-box: view-box; transform-origin: 210px 236px; }
-.ring--1 { animation: spin 26s linear infinite; }
-.ring--2 { animation: spin 34s linear infinite reverse; }
-.ring--3 { animation: spin 20s linear infinite; }
-.core__poly { transform-box: view-box; transform-origin: 210px 215px; animation: spin 26s linear infinite; }
-.core__poly--b { animation-duration: 40s; animation-direction: reverse; opacity: .5; }
-.core__poly--c { animation-duration: 17s; animation-direction: reverse; }
-.node { fill: var(--gold); transform-box: view-box; }
-.node--1 { transform-origin: 210px 236px; animation: orbit 9s linear infinite; }
-.node--2 { transform-origin: 210px 236px; animation: orbit 13s linear infinite reverse; }
-.node--3 { transform-origin: 210px 236px; animation: orbit 11s linear infinite; }
-.node--4 { transform-origin: 210px 236px; animation: orbit 16s linear infinite reverse; }
-.node--5 { transform-origin: 210px 236px; animation: orbit 7s linear infinite; }
-.piece__arc path {
-  stroke-dasharray: 40 320; animation: dash 3.4s linear infinite;
-  filter: drop-shadow(0 0 6px rgba(255, 233, 176, .8));
+.piece__caption {
+  position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
+  margin: 0; display: flex; align-items: center; gap: 12px; white-space: nowrap;
+  font-family: var(--display); font-size: 10px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--muted-2);
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes orbit { to { transform: rotate(360deg); } }
-@keyframes dash { to { stroke-dashoffset: -360; } }
+.piece__caption span {
+  display: block; width: 34px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--red));
+}
 
 .scroll-hint {
   position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
