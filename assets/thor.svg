@@ -1,4 +1,4 @@
-<svg class="thor" viewBox="52 -52 440 624" role="img" aria-label="Карандашный рисунок Тора с поднятым молотом; по контуру фигуры расходится неоновое свечение, зависящее от положения курсора">
+<svg class="thor" viewBox="58 -108 424 686" role="img" aria-label="Карандашный рисунок Тора с поднятым молотом Мьёльниром; по контуру фигуры расходится неоновое свечение, а от головы молота по курсору бьют молнии">
   <defs>
     <!-- ===== материалы ===== -->
     <linearGradient id="graphite" x1="0" y1="0" x2="1" y2="1">
@@ -6,15 +6,28 @@
       <stop offset=".42" stop-color="#39414f"/>
       <stop offset="1" stop-color="#232833"/>
     </linearGradient>
-
-    <!-- неон по контуру: циан сверху → индиго → маджента -->
-    <linearGradient id="neonGrad" x1="150" y1="0" x2="470" y2="660" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#67e8f9"/>
-      <stop offset=".32" stop-color="#818cf8"/>
-      <stop offset=".66" stop-color="#e879f9"/>
-      <stop offset="1" stop-color="#fb7185"/>
+    <!-- металл молота -->
+    <linearGradient id="mjTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c3cfe2"/>
+      <stop offset=".5" stop-color="#8b98ae"/>
+      <stop offset="1" stop-color="#616e82"/>
     </linearGradient>
-
+    <linearGradient id="mjRight" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#59667c"/>
+      <stop offset="1" stop-color="#343d4d"/>
+    </linearGradient>
+    <linearGradient id="mjLeft" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#333b4b"/>
+      <stop offset="1" stop-color="#1c222d"/>
+    </linearGradient>
+    <!-- неон по контуру: холодная электрика сверху → фиолетовый → раскалённый красный
+         (палитра «Electric Pulse / Solar Violet / Lava Core»: неон как акцент, а не заливка) -->
+    <linearGradient id="neonGrad" x1="170" y1="-20" x2="450" y2="600" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2dd4ff"/>
+      <stop offset=".38" stop-color="#7c5cff"/>
+      <stop offset=".72" stop-color="#c04cf0"/>
+      <stop offset="1" stop-color="#ff4d6d"/>
+    </linearGradient>
     <!-- штриховка карандашом -->
     <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
       <line x1="0" y1="0" x2="0" y2="7" stroke="#93a3bd" stroke-width="1" opacity=".5"/>
@@ -24,29 +37,23 @@
     </pattern>
 
     <!-- ===== эффекты ===== -->
-    <!-- неоновая обводка по силуэту (цвет берётся из SourceGraphic) -->
     <filter id="neonEdge" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
-      <feMorphology in="SourceGraphic" operator="dilate" radius="2.4" result="dil"/>
+      <feMorphology in="SourceGraphic" operator="dilate" radius="1.5" result="dil"/>
       <feComposite in="dil" in2="SourceAlpha" operator="out" result="edge"/>
-      <feGaussianBlur in="edge" stdDeviation="10" result="glow1"/>
-      <feGaussianBlur in="edge" stdDeviation="2" result="glow2"/>
+      <feGaussianBlur in="edge" stdDeviation="7" result="glow1"/>
+      <feGaussianBlur in="edge" stdDeviation="1.4" result="glow2"/>
       <feMerge>
-        <feMergeNode in="glow1"/>
         <feMergeNode in="glow1"/>
         <feMergeNode in="glow2"/>
         <feMergeNode in="edge"/>
       </feMerge>
     </filter>
-
-    <!-- карандашный контур: светлая полоса по краю силуэта -->
     <filter id="pencilEdge" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
       <feMorphology in="SourceAlpha" operator="dilate" radius="1.7" result="dil"/>
       <feComposite in="dil" in2="SourceAlpha" operator="out" result="edge"/>
       <feFlood flood-color="#b3c2da" flood-opacity=".9" result="ink"/>
       <feComposite in="ink" in2="edge" operator="in"/>
     </filter>
-
-    <!-- грубая «рука» + зерно бумаги -->
     <filter id="sketch" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
       <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="17" result="warp"/>
       <feDisplacementMap in="SourceGraphic" in2="warp" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="rough"/>
@@ -58,8 +65,6 @@
         <feMergeNode in="grainIn"/>
       </feMerge>
     </filter>
-
-    <!-- бумага -->
     <filter id="paper" x="0" y="0" width="100%" height="100%">
       <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="4" seed="3" result="n"/>
       <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.72  0 0 0 0 0.78  0 0 0 0 0.9  0 0 0 0.08 0"/>
@@ -86,7 +91,8 @@
       <path d="M268 176 C214 192 146 246 100 328 C66 392 74 470 116 528 C166 520 218 482 252 438 C278 404 292 350 296 300 C300 242 288 192 268 176 Z"/>
       <!-- ноги -->
       <path class="limb limb--leg" d="M322 330 C340 396 352 468 357 546"/>
-      <path class="limb limb--leg" d="M288 330 C270 396 256 468 249 548"/>      <!-- торс -->
+      <path class="limb limb--leg" d="M288 330 C270 396 256 468 249 548"/>
+      <!-- торс -->
       <path d="M262 182 C250 212 252 262 266 302 C274 322 280 334 282 346 L330 346 C332 334 338 322 346 302 C360 258 360 210 348 182 C330 170 280 170 262 182 Z"/>
       <!-- шея -->
       <path d="M289 148 L321 148 L326 186 L284 186 Z"/>
@@ -99,9 +105,18 @@
       <path class="limb limb--arm" d="M338 192 C368 156 390 104 399 54"/>
       <!-- рука в сторону -->
       <path class="limb limb--arm" d="M266 192 C228 214 198 248 178 292"/>
-      <!-- молот -->
-      <path class="limb limb--handle" d="M399 14 L399 96"/>
-      <path d="M336 -40 L464 -40 L472 20 L328 20 Z"/>
+      <!-- ===== МЬЁЛЬНИР ===== -->
+      <!-- рукоять -->
+      <path class="limb limb--handle" d="M400 -20 L400 98"/>
+      <!-- голова: верхняя грань -->
+      <path d="M400 -86 L463 -73 L463 -47 L400 -34 L337 -47 L337 -73 Z" fill="url(#mjTop)"/>
+      <!-- правая грань -->
+      <path d="M463 -47 L400 -34 L400 12 L463 -1 Z" fill="url(#mjRight)"/>
+      <!-- левая грань -->
+      <path d="M400 -34 L337 -47 L337 -1 L400 12 Z" fill="url(#mjLeft)"/>
+      <!-- красная лента -->
+      <path d="M342 -58 C318 -42 296 -22 282 -4 C275 4 268 9 262 11" fill="none" stroke="#8e2330" stroke-width="9" stroke-linecap="round"/>
+      <path d="M342 -58 C318 -42 296 -22 282 -4" fill="none" stroke="#c0384a" stroke-width="3" stroke-linecap="round" opacity=".8"/>
       <!-- сапоги -->
       <path d="M337 506 C352 500 370 503 377 512 L383 550 L335 550 Z"/>
       <path d="M228 508 C243 502 261 505 268 514 L274 552 L226 552 Z"/>
@@ -109,19 +124,15 @@
   </defs>
 
   <!-- бумага -->
-  <rect class="thor__paper" x="-60" y="-100" width="720" height="840" fill="#0e1016" filter="url(#paper)"/>
+  <rect class="thor__paper" x="-60" y="-160" width="720" height="880" fill="#0e1016" filter="url(#paper)"/>
 
   <!-- ===== карандашный рисунок ===== -->
   <g class="thor__draw" filter="url(#sketch)">
-    <!-- масса фигуры -->
     <use href="#thorSil" fill="url(#graphite)" stroke="#2b313d"/>
-    <!-- штриховка -->
     <use href="#thorSil" fill="url(#hatch)" opacity=".5"/>
     <use href="#thorSil" fill="url(#hatch2)" opacity=".26"/>
-    <!-- карандашный контур -->
     <use href="#thorSil" fill="#000" filter="url(#pencilEdge)"/>
 
-    <!-- детали -->
     <g class="thor__detail" fill="none" stroke="#aab9d0" stroke-width="1.6" stroke-linecap="round" opacity=".8">
       <!-- нагрудные пластины -->
       <circle cx="281" cy="238" r="33"/>
@@ -149,21 +160,33 @@
       <!-- манжеты и сапоги -->
       <path d="M391 60 L412 64 M389 48 L410 52"/>
       <path d="M340 512 L378 516 M234 514 L270 518"/>
-      <!-- молот -->
-      <path d="M336 -40 L328 20 M464 -40 L472 20"/>
-      <path d="M352 -40 L346 20 M384 -40 L380 20 M416 -40 L414 20" opacity=".4"/>
-      <path d="M391 46 L391 82 M405 46 L405 82" opacity=".55"/>
-      <path d="M386 20 L414 20" opacity=".7"/>
+      <!-- рёбра молота -->
+      <path d="M337 -47 L337 -1 M463 -47 L463 -1" opacity=".5"/>
+    </g>
+    <!-- спиральная оплётка рукояти -->
+    <g class="thor__detail" fill="none" stroke="#8f9db4" stroke-width="1.5" opacity=".55">
+      <path d="M391 16 L409 22 M391 28 L409 34 M391 40 L409 46 M391 52 L409 58 M391 64 L409 70 M391 76 L409 82 M391 88 L409 94"/>
     </g>
   </g>
 
+  <!-- руны на гранях молота -->
+  <g class="thor__rune" fill="none" stroke="#7fe3ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".35">
+    <path d="M432 -32 L440 -25 L432 -18 L440 -11"/>
+    <path d="M418 -26 L424 -21 L418 -16"/>
+    <path d="M446 -36 L452 -31"/>
+    <path d="M366 -32 L374 -25 L366 -18 L374 -12"/>
+    <path d="M352 -26 L358 -21"/>
+    <path d="M384 -22 L390 -17"/>
+    <path d="M406 -8 L414 -2"/>
+  </g>
+
   <!-- постоянная слабая кромка -->
-  <use class="thor__rim" href="#thorSil" fill="url(#neonGrad)" stroke="url(#neonGrad)" filter="url(#neonEdge)" opacity=".22"/>
+  <use class="thor__rim" href="#thorSil" fill="url(#neonGrad)" stroke="url(#neonGrad)" filter="url(#neonEdge)" opacity=".14"/>
 
   <!-- неон, «зажигаемый» курсором -->
   <g class="thor__neon" mask="url(#cursorMask)">
     <use href="#thorSil" fill="url(#neonGrad)" stroke="url(#neonGrad)" filter="url(#neonEdge)"/>
   </g>
 
-  <rect x="-60" y="-100" width="720" height="840" fill="url(#vig)" pointer-events="none"/>
+  <rect x="-60" y="-160" width="720" height="880" fill="url(#vig)" pointer-events="none"/>
 </svg>

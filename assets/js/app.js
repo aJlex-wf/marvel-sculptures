@@ -846,24 +846,51 @@
   });
 
   /* ================================================================
-     Hero: неон по контуру рисунка — управляется курсором
+     Hero: неон по контуру + молнии от молота к курсору
      ================================================================ */
-  function initNeon() {
+  function initHero() {
     const svg = $(".thor");
+    const canvas = $("#boltCanvas");
     if (!svg) return;
+    const clamp01 = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
+
     const grad = $("#cursorGlowGrad", svg);
     const neon = $(".thor__neon", svg);
     const rim = $(".thor__rim", svg);
+    const runes = $(".thor__rune", svg);
     const hero = $(".hero");
-    if (!grad || !neon) return;
 
-    const S = { x: 300, y: 300, tx: 300, ty: 300, inside: 0, heat: 0 };
+    const ctx = canvas ? canvas.getContext("2d") : null;
+    const HEAD = [
+      [400, -86], [463, -73], [463, -47], [400, -34], [337, -47], [337, -73],
+      [463, -1], [400, 12], [337, -1], [400, -60]
+    ];
+
+    const S = {
+      x: 300, y: 300, tx: 300, ty: 300,   // курсор в координатах SVG
+      inside: 0, heat: 0, flash: 0, t: 0
+    };
+
+    const BOLTS = [];
+    let spawnAcc = 0;
+
+    /* --- перевод координат SVG → пиксели холста --- */
+    function svgToCanvas(p) {
+      const m = svg.getScreenCTM();
+      if (!m) return { x: 0, y: 0 };
+      const rect = canvas.getBoundingClientRect();
+      const pt = new DOMPoint(p.x, p.y).matrixTransform(m);
+      return { x: pt.x - rect.left, y: pt.y - rect.top };
+    }
 
     function toUser(e) {
+      const m = svg.getScreenCTM();
+      if (!m) return { x: 300, y: 300 };
       const pt = svg.createSVGPoint();
       pt.x = e.clientX;
       pt.y = e.clientY;
-      return pt.matrixTransform(svg.getScreenCTM().inverse());
+      const p = pt.matrixTransform(m.inverse());
+      return { x: p.x, y: p.y };
     }
 
     function onMove(e) {
@@ -876,6 +903,73 @@
       hero.addEventListener("pointerleave", function () { S.inside = 0; });
     }
 
+    /* --- генерация разряда: случайное блуждание вместо ровной зигзаги --- */
+    function makeBolt(from, to, segs) {
+      const pts = [from];
+      const dx = to.x - from.x, dy = to.y - from.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      let x = from.x, y = from.y;
+      let a = Math.atan2(dy, dx);
+      const step = dist / segs;
+      for (let i = 0; i < segs; i++) {
+        a += (Math.random() - 0.5) * 1.15;
+        const l = step * (0.55 + Math.random() * 0.95);
+        x += Math.cos(a) * l;
+        y += Math.sin(a) * l;
+        pts.push({ x: x, y: y });
+      }
+      pts.push(to);
+      return pts;
+    }
+
+    function spawnBolt(strength) {
+      const hp = HEAD[(Math.random() * HEAD.length) | 0];
+      const from = svgToCanvas(hp);
+      /* часть разрядов идёт к курсору, часть — по самой голове */
+      let to;
+      if (Math.random() < 0.62) {
+        to = svgToCanvas({ x: S.x, y: S.y });
+      } else {
+        const hp2 = HEAD[(Math.random() * HEAD.length) | 0];
+        to = svgToCanvas(hp2);
+      }
+      const dist = Math.hypot(to.x - from.x, to.y - from.y);
+      const segs = Math.max(4, Math.min(14, Math.round(dist / 22) + 4));
+      BOLTS.push({
+        pts: makeBolt(from, to, segs),
+        life: 0,
+        max: 0.16 + Math.random() * 0.2,
+        w: 0.8 + Math.random() * 1.5,
+        power: strength
+      });
+      if (BOLTS.length > 26) BOLTS.shift();
+      S.flash = Math.min(1, S.flash + strength * 0.6);
+    }
+
+    function drawBolt(b) {
+      const k = 1 - b.life / b.max;
+      const a = k * k * (0.45 + b.power * 0.55);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      /* ореол */
+      ctx.strokeStyle = "rgba(96,196,255," + (a * 0.22).toFixed(3) + ")";
+      ctx.lineWidth = b.w * 5.5;
+      ctx.beginPath();
+      ctx.moveTo(b.pts[0].x, b.pts[0].y);
+      for (let i = 1; i < b.pts.length; i++) ctx.lineTo(b.pts[i].x, b.pts[i].y);
+      ctx.stroke();
+
+      /* ядро */
+      ctx.strokeStyle = "rgba(226,248,255," + a.toFixed(3) + ")";
+      ctx.lineWidth = b.w;
+      ctx.beginPath();
+      ctx.moveTo(b.pts[0].x, b.pts[0].y);
+      for (let i = 1; i < b.pts.length; i++) ctx.lineTo(b.pts[i].x, b.pts[i].y);
+      ctx.stroke();
+    }
+
+    /* --- главный цикл --- */
     let last = 0;
     function frame(ts) {
       const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016;
@@ -885,16 +979,51 @@
       if (!paused) {
         S.x += (S.tx - S.x) * Math.min(1, dt * 7);
         S.y += (S.ty - S.y) * Math.min(1, dt * 7);
+        S.t += dt;
+        S.flash *= Math.max(0, 1 - dt * 5);
       }
-      /* радиус свечения: ближе к фигуре — ярче и шире */
-      const heat = S.inside * (0.6 + 0.4 * Math.sin(ts / 900));
-      S.heat += (heat - S.heat) * Math.min(1, dt * 4);
 
-      grad.setAttribute("cx", S.x.toFixed(1));
-      grad.setAttribute("cy", S.y.toFixed(1));
-      grad.setAttribute("r", (150 + S.heat * 130).toFixed(1));
-      neon.setAttribute("opacity", (0.45 + S.heat * 0.6).toFixed(3));
-      if (rim) rim.setAttribute("opacity", (0.2 + S.heat * 0.24).toFixed(3));
+      /* курсор → расстояние до молота */
+      const headC = svgToCanvas({ x: 400, y: -46 });
+      const curC = svgToCanvas({ x: S.x, y: S.y });
+      const dist = Math.hypot(curC.x - headC.x, curC.y - headC.y);
+      const near = S.inside * clamp01(1 - dist / 420);
+      S.heat += (near - S.heat) * Math.min(1, dt * 3.4);
+
+      /* ---- неон по контуру ---- */
+      if (grad) {
+        grad.setAttribute("cx", S.x.toFixed(1));
+        grad.setAttribute("cy", S.y.toFixed(1));
+        grad.setAttribute("r", (110 + S.heat * 120).toFixed(1));
+      }
+      if (neon) neon.setAttribute("opacity", (0.45 + S.heat * 0.55 + S.flash * 0.25).toFixed(3));
+      if (rim) rim.setAttribute("opacity", (0.12 + S.heat * 0.22 + S.flash * 0.18).toFixed(3));
+      if (runes) runes.setAttribute("opacity", (0.28 + S.heat * 0.72 + S.flash * 0.3).toFixed(3));
+
+      /* ---- молнии ---- */
+      if (ctx && !paused) {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        if (canvas.width !== Math.round(rect.width * dpr) || canvas.height !== Math.round(rect.height * dpr)) {
+          canvas.width = Math.round(rect.width * dpr);
+          canvas.height = Math.round(rect.height * dpr);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        /* фоновое потрескивание на голове */
+        spawnAcc += dt * (2.4 + S.heat * 26);
+        while (spawnAcc > 1) {
+          spawnAcc -= 1;
+          spawnBolt(0.25 + S.heat * 0.75);
+        }
+        for (let i = BOLTS.length - 1; i >= 0; i--) {
+          const b = BOLTS[i];
+          b.life += dt;
+          if (b.life >= b.max) BOLTS.splice(i, 1);
+          else drawBolt(b);
+        }
+      }
 
       setTimeout(function () { frame(performance.now()); }, 16);
     }
@@ -907,5 +1036,5 @@
   renderGrid();
   observeReveals();
   initEmbers();
-  initNeon();
+  initHero();
 })();

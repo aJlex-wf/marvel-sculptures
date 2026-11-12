@@ -256,19 +256,26 @@ body[data-motion="off"] .icon-btn__glyph::after { opacity: 0; }
 }
 
 /* --- рисунок Тора --- */
+.piece__frame {
+  position: relative; display: block;
+  width: min(100%, 430px);
+}
 .thor {
   position: relative;
-  width: min(100%, 520px);
-  max-height: min(64vh, 600px);
-  height: auto;
+  width: 100%; height: auto;
   overflow: visible;
   display: block;
   filter: drop-shadow(0 30px 60px rgba(0, 0, 0, .7));
+}
+.bolt {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; mix-blend-mode: screen;
 }
 .thor__paper { opacity: .5; }
 .thor__draw { opacity: .96; }
 .thor__detail { mix-blend-mode: screen; }
 .thor__rim { opacity: .26; }
+.thor__rune { mix-blend-mode: screen; }
 
 /* толщина конечностей (применяется во всех проходах: контур, масса, неон) */
 .limb--arm { stroke-width: 30px; }
