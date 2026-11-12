@@ -846,415 +846,58 @@
   });
 
   /* ================================================================
-     Hero: подвесная кинетическая скульптура (мобиль)
-     3D-сцена на canvas: горизонтальные балки, диски, сферы, кольца, пыль.
-     Конструкция висит на подвесах и качается за курсором — как в «Зале».
+     Hero: неон по контуру рисунка — управляется курсором
      ================================================================ */
-  function initCore() {
-    const cv = $("#piece");
-    if (!cv || !cv.getContext) return;
-    const ctx = cv.getContext("2d");
+  function initNeon() {
+    const svg = $(".thor");
+    if (!svg) return;
+    const grad = $("#cursorGlowGrad", svg);
+    const neon = $(".thor__neon", svg);
+    const rim = $(".thor__rim", svg);
     const hero = $(".hero");
+    if (!grad || !neon) return;
 
-    /* --- математика --- */
-    const rotX = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; };
-    const rotY = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; };
-    const rotZ = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]]; };
-    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-    const unit = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
-    const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+    const S = { x: 300, y: 300, tx: 300, ty: 300, inside: 0, heat: 0 };
 
-    /* --- материалы --- */
-    const MAT = {
-      steel: { face: [58, 66, 82], rim: [150, 166, 194], edge: [216, 228, 248] },
-      red: { face: [118, 22, 28], rim: [206, 92, 78], edge: [248, 208, 168] },
-      gold: { face: [138, 98, 32], rim: [226, 190, 118], edge: [255, 242, 208] }
-    };
-
-    /* --- дерево конструкции ---
-       drop  — длина подвеса балки от точки крепления
-       half  — половина длины балки
-       rate  — скорость вращения балки (рад/с)
-       ends  — что висит на концах балки
-       children — дочерние мобили, точка крепления at (смещение по балке) */
-    const MOBILE = {
-      drop: 0.50, half: 0.60, rate: 0.16, w: 5.2,
-      ends: [
-        { kind: "sphere", r: 0.072, color: "gold", wire: 0.17 },
-        { kind: "disc", r: 0.195, color: "red", wire: 0.21 }
-      ],
-      children: [
-        {
-          at: -0.22, drop: 0.44, half: 0.40, rate: -0.26, w: 3.6,
-          ends: [
-            { kind: "disc", r: 0.125, color: "steel", wire: 0.15 },
-            { kind: "sphere", r: 0.055, color: "gold", wire: 0.13 }
-          ],
-          children: [
-            {
-              at: 0.06, drop: 0.30, half: 0.24, rate: 0.42, w: 2.6,
-              ends: [{ kind: "ring", r: 0.105, color: "gold", wire: 0.11 }],
-              children: []
-            }
-          ]
-        },
-        {
-          at: 0.30, drop: 0.52, half: 0.30, rate: 0.31, w: 3.2,
-          ends: [{ kind: "disc", r: 0.145, color: "red", wire: 0.13 }],
-          children: []
-        }
-      ]
-    };
-
-    const ANCHOR = [0, -0.78, 0];
-
-    /* --- состояние --- */
-    const S = { w: 0, h: 0, dpr: 1, px: 0, py: 0, tx: 0, ty: 0, active: 0, spin: 1, t: 0 };
-
-    const PARTICLES = [];
-    const PCOUNT = 190;
-
-    function seedParticles() {
-      PARTICLES.length = 0;
-      for (let i = 0; i < PCOUNT; i++) {
-        const x = (Math.random() - 0.5) * 3.2;
-        const y = (Math.random() - 0.5) * 3.2;
-        const z = (Math.random() - 0.5) * 2.4;
-        PARTICLES.push({ x: x, y: y, z: z, hx: x, hy: y, hz: z, vx: 0, vy: 0, vz: 0, r: Math.random() * 1.5 + 0.45, a: Math.random() * 0.5 + 0.18 });
-      }
-    }
-
-    function resize() {
-      const rect = cv.getBoundingClientRect();
-      if (!rect.width) return;
-      S.dpr = Math.min(window.devicePixelRatio || 1, 2);
-      S.w = rect.width; S.h = rect.height;
-      cv.width = Math.round(rect.width * S.dpr);
-      cv.height = Math.round(rect.height * S.dpr);
-      ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
-    }
-
-    function makeCam() {
-      return { cx: S.w * 0.5, cy: S.h * 0.50, R: Math.min(S.w, S.h) * 0.46, f: 3.2, pitch: 0.46 };
-    }
-    function project(p, cam) {
-      const q = rotX(p, -cam.pitch);
-      const sc = cam.f / (cam.f - q[2]);
-      return [cam.cx + q[0] * cam.R * sc, cam.cy + q[1] * cam.R * sc, q[2], sc];
-    }
-
-    /* --- раскладка: каскадная инерция от ветра --- */
-    const laid = [];
-    function layout(node, parentPoint, parentYaw, parentSpeed, depth, wind, dt) {
-      if (node.yaw === undefined) node.yaw = 0;
-      if (node.swx === undefined) node.swx = 0;
-      if (node.swz === undefined) node.swz = 0;
-      node.yaw += node.rate * dt * parentSpeed;
-
-      const lag = 1 / (1 + depth * 1.3);
-      const k = Math.min(1, dt * (3.2 - depth * 0.5));
-      node.swx += (wind.x * lag - node.swx) * k;
-      node.swz += (wind.z * lag - node.swz) * k;
-
-      const wy = parentYaw + node.yaw;
-      /* +y — вниз (как на экране) */
-      const hang = unit(rotX(rotZ([0, 1, 0], -node.swx), node.swz));
-      const pivot = [
-        parentPoint[0] + hang[0] * node.drop,
-        parentPoint[1] + hang[1] * node.drop,
-        parentPoint[2] + hang[2] * node.drop
-      ];
-      const bar = rotY([1, 0, 0], wy);
-
-      node.pivot = pivot; node.bar = bar; node.hang = hang; node.wy = wy;
-      /* исходные спецификации храним отдельно — иначе каждый кадр ломает данные */
-      if (!node.specs) node.specs = node.ends || [];
-      node.ends = node.specs.map(function (spec, i) {
-        const sgn = i === 0 ? 1 : -1;
-        const anchor = [pivot[0] + bar[0] * node.half * sgn, pivot[1], pivot[2] + bar[2] * node.half * sgn];
-        const w = spec.wire || 0.15;
-        return { spec: spec, anchor: anchor, pos: [anchor[0] + hang[0] * w, anchor[1] + hang[1] * w, anchor[2] + hang[2] * w] };
-      });
-      laid.push(node);
-
-      (node.children || []).forEach(function (ch) {
-        const at = ch.at || 0;
-        const attach = [pivot[0] + bar[0] * at, pivot[1], pivot[2] + bar[2] * at];
-        layout(ch, attach, wy, parentSpeed, depth + 1, wind, dt);
-      });
-    }
-
-    /* --- отрисовка --- */
-    function shade(color, lum) {
-      const m = MAT[color];
-      const l = Math.max(0, Math.min(1.3, lum));
-      return "rgb(" + Math.round(m.face[0] + (m.rim[0] - m.face[0]) * l) + "," +
-        Math.round(m.face[1] + (m.rim[1] - m.face[1]) * l) + "," +
-        Math.round(m.face[2] + (m.rim[2] - m.face[2]) * l) + ")";
-    }
-
-    function drawWire(a, b, cam, width, alpha) {
-      const p = project(a, cam), q = project(b, cam);
-      const depth = clamp01((p[2] + 1.4) / 2.8);
-      ctx.lineCap = "round";
-      ctx.lineWidth = width * (0.7 + depth * 0.5);
-      ctx.strokeStyle = "rgba(12,14,20," + alpha + ")";
-      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
-      ctx.lineWidth = Math.max(0.5, width * (0.7 + depth * 0.5) * 0.45);
-      ctx.strokeStyle = "rgba(" + Math.round(70 + depth * 150) + "," + Math.round(78 + depth * 162) + "," + Math.round(94 + depth * 172) + "," + alpha + ")";
-      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
-    }
-
-    function drawBar(node, cam) {
-      const a = [node.pivot[0] - node.bar[0] * node.half, node.pivot[1], node.pivot[2] - node.bar[2] * node.half];
-      const b = [node.pivot[0] + node.bar[0] * node.half, node.pivot[1], node.pivot[2] + node.bar[2] * node.half];
-      const p = project(a, cam), q = project(b, cam);
-      const depth = clamp01((p[2] + 1.4) / 2.8);
-      const w = node.w * (0.75 + depth * 0.55);
-
-      ctx.lineCap = "round";
-      /* тёмный контур */
-      ctx.lineWidth = w;
-      ctx.strokeStyle = "rgba(8,10,15,0.85)";
-      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
-
-      /* металлическое тело */
-      const g = ctx.createLinearGradient(p[0], p[1] - w * 0.5, q[0], q[1] - w * 0.5);
-      g.addColorStop(0, "rgba(" + Math.round(92 + depth * 128) + "," + Math.round(102 + depth * 140) + "," + Math.round(120 + depth * 150) + ",1)");
-      g.addColorStop(1, "rgba(" + Math.round(58 + depth * 92) + "," + Math.round(66 + depth * 102) + "," + Math.round(80 + depth * 112) + ",1)");
-      ctx.lineWidth = Math.max(1, w * 0.74);
-      ctx.strokeStyle = g;
-      ctx.beginPath(); ctx.moveTo(p[0], p[1] - w * 0.06); ctx.lineTo(q[0], q[1] - w * 0.06); ctx.stroke();
-
-      /* блик по верхней кромке */
-      ctx.lineWidth = Math.max(0.5, w * 0.16);
-      ctx.strokeStyle = "rgba(255,247,230," + (0.14 + depth * 0.46).toFixed(3) + ")";
-      ctx.beginPath(); ctx.moveTo(p[0] - w * 0.22, p[1] - w * 0.36); ctx.lineTo(q[0] - w * 0.22, q[1] - w * 0.36); ctx.stroke();
-    }
-
-    function drawDisc(spec, pos, normal, axis, cam) {
-      const c = project(pos, cam);
-      const depth = clamp01((c[2] + 1.4) / 2.8);
-      const r = spec.r;
-      const u = unit(axis);
-      const v = unit(cross(normal, u));
-      const pu = project([pos[0] + u[0] * r, pos[1] + u[1] * r, pos[2] + u[2] * r], cam);
-      const pv = project([pos[0] + v[0] * r, pos[1] + v[1] * r, pos[2] + v[2] * r], cam);
-      const ru = Math.hypot(pu[0] - c[0], pu[1] - c[1]);
-      const rv = Math.hypot(pv[0] - c[0], pv[1] - c[1]);
-      const ang = Math.atan2(pu[1] - c[1], pu[0] - c[0]);
-      const mat = MAT[spec.color];
-      const lum = 0.3 + depth * 0.4;
-
-      ctx.save();
-      ctx.translate(c[0], c[1]);
-      ctx.rotate(ang);
-      /* толщина диска: нижняя кромка */
-      const th = Math.max(1.2, ru * 0.07);
-      ctx.fillStyle = shade(spec.color, lum * 0.22);
-      ctx.beginPath();
-      ctx.ellipse(0, th, Math.max(1, ru), Math.max(0.6, rv), 0, 0, Math.PI * 2);
-      ctx.fill();
-      const g = ctx.createLinearGradient(-ru, -rv, ru, rv);
-      g.addColorStop(0, shade(spec.color, lum * 0.5));
-      g.addColorStop(0.42, shade(spec.color, lum * 1.3));
-      g.addColorStop(1, shade(spec.color, lum * 0.45));
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, Math.max(1, ru), Math.max(0.6, rv), 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.lineWidth = Math.max(0.6, ru * 0.04);
-      ctx.strokeStyle = "rgba(" + mat.edge[0] + "," + mat.edge[1] + "," + mat.edge[2] + "," + (0.3 + depth * 0.45).toFixed(3) + ")";
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    function drawSphere(spec, pos, cam) {
-      const c = project(pos, cam);
-      const depth = clamp01((c[2] + 1.4) / 2.8);
-      const r = Math.max(2, spec.r * cam.R * c[3]);
-      const mat = MAT[spec.color];
-      const g = ctx.createRadialGradient(c[0] - r * 0.38, c[1] - r * 0.42, r * 0.04, c[0], c[1], r * 1.15);
-      g.addColorStop(0, "rgba(" + mat.edge[0] + "," + mat.edge[1] + "," + mat.edge[2] + ",1)");
-      g.addColorStop(0.38, shade(spec.color, 0.85));
-      g.addColorStop(1, shade(spec.color, 0.14));
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(c[0], c[1], r, 0, Math.PI * 2); ctx.fill();
-      ctx.lineWidth = 0.8;
-      ctx.strokeStyle = "rgba(" + mat.rim[0] + "," + mat.rim[1] + "," + mat.rim[2] + "," + (0.2 + depth * 0.35).toFixed(3) + ")";
-      ctx.stroke();
-      ctx.fillStyle = "rgba(255,252,240,0.9)";
-      ctx.beginPath(); ctx.arc(c[0] - r * 0.36, c[1] - r * 0.4, Math.max(0.6, r * 0.16), 0, Math.PI * 2); ctx.fill();
-    }
-
-    function drawRing(spec, pos, normal, axis, cam) {
-      const c = project(pos, cam);
-      const depth = clamp01((c[2] + 1.4) / 2.8);
-      const r = spec.r;
-      const u = unit(normal);
-      const v = unit(axis);
-      const pu = project([pos[0] + u[0] * r, pos[1] + u[1] * r, pos[2] + u[2] * r], cam);
-      const pv = project([pos[0] + v[0] * r, pos[1] + v[1] * r, pos[2] + v[2] * r], cam);
-      const ru = Math.hypot(pu[0] - c[0], pu[1] - c[1]);
-      const rv = Math.hypot(pv[0] - c[0], pv[1] - c[1]);
-      const ang = Math.atan2(pv[1] - c[1], pv[0] - c[0]);
-      const mat = MAT[spec.color];
-      ctx.save();
-      ctx.translate(c[0], c[1]);
-      ctx.rotate(ang);
-      ctx.lineWidth = Math.max(1, ru * 0.1);
-      const g = ctx.createLinearGradient(-ru, -rv, ru, rv);
-      g.addColorStop(0, "rgba(" + mat.face[0] + "," + mat.face[1] + "," + mat.face[2] + ",1)");
-      g.addColorStop(0.5, "rgba(" + mat.edge[0] + "," + mat.edge[1] + "," + mat.edge[2] + ",1)");
-      g.addColorStop(1, "rgba(" + mat.face[0] + "," + mat.face[1] + "," + mat.face[2] + ",1)");
-      ctx.strokeStyle = g;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, Math.max(1, ru), Math.max(0.6, rv), 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      void depth;
-    }
-
-    function drawElement(node, cam) {
-      (node.ends || []).forEach(function (e) {
-        const spec = e.spec;
-        if (spec.kind === "disc") drawDisc(spec, e.pos, [-node.hang[0], -node.hang[1], -node.hang[2]], node.bar, cam);
-        else if (spec.kind === "sphere") drawSphere(spec, e.pos, cam);
-        else if (spec.kind === "ring") drawRing(spec, e.pos, node.hang, node.bar, cam);
-      });
-    }
-
-    /* --- пыль --- */
-    function drawParticles(cam, dt, frozen) {
-      const attractR = 1.6;
-      const ax = (S.px - cam.cx) / cam.R, ay = (S.py - cam.cy) / cam.R;
-      const active = frozen ? 0 : S.active;
-      const step = Math.min(0.034, dt || 0.016);
-
-      if (!frozen) {
-        for (let i = 0; i < PARTICLES.length; i++) {
-          const p = PARTICLES[i];
-          let fx = (p.hx - p.x) * 2.0, fy = (p.hy - p.y) * 2.0;
-          if (active > 0.01) {
-            const dx = ax - p.x, dy = ay - p.y;
-            const d = Math.hypot(dx, dy);
-            if (d < attractR && d > 0.0001) {
-              const f = (1 - d / attractR) * 20 * active;
-              const nx = dx / d, ny = dy / d;
-              fx += nx * f - ny * f * 0.8;
-              fy += ny * f + nx * f * 0.8;
-              if (d < attractR * 0.28) { p.x += (ax - p.x) * 0.09; p.y += (ay - p.y) * 0.09; }
-            }
-          }
-          p.vx = (p.vx + fx * step) * 0.9;
-          p.vy = (p.vy + fy * step) * 0.9;
-          p.vz = (p.vz + (p.hz - p.z) * 1.4 * step) * 0.94;
-          p.vx += (Math.random() - 0.5) * 0.0018;
-          p.vy += (Math.random() - 0.5) * 0.0018;
-          p.x += p.vx * step; p.y += p.vy * step; p.z += p.vz * step;
-        }
-      }
-
-      const sorted = PARTICLES.slice().sort(function (a, b) { return a.z - b.z; });
-      for (let i = 0; i < sorted.length; i++) {
-        const p = sorted[i];
-        const s = project([p.x, p.y, p.z], cam);
-        const depth = clamp01((s[2] + 1.4) / 2.8);
-        const near = active > 0.01 ? clamp01(1 - Math.hypot(ax - p.x, ay - p.y) / attractR) * active : 0;
-        const alpha = (0.05 + depth * 0.3 + near * 0.5) * p.a;
-        const r = p.r * (0.5 + depth * 0.6) * (1 - near * 0.3);
-        ctx.beginPath();
-        ctx.arc(s[0], s[1], r, 0, Math.PI * 2);
-        ctx.fillStyle = near > 0.05
-          ? "rgba(255,214,150," + Math.min(0.95, alpha * 1.7).toFixed(3) + ")"
-          : "rgba(180,196,226," + Math.min(0.55, alpha).toFixed(3) + ")";
-        ctx.fill();
-      }
-    }
-
-    /* --- главный кадр --- */
-    function frame(ts) {
-      const dt = Math.min(0.05, (ts - (frame.last || ts)) / 1000);
-      frame.last = ts;
-      const paused = document.body.dataset.motion === "off";
-      const cam = makeCam();
-
-      if (!paused) {
-        S.px += (S.tx - S.px) * Math.min(1, dt * 9);
-        S.py += (S.ty - S.py) * Math.min(1, dt * 9);
-        S.t += dt;
-      }
-
-      /* курсор → ветер и скорость вращения */
-      const cur = [(S.px - cam.cx) / cam.R, (S.py - cam.cy) / cam.R];
-      const dist = Math.min(1.5, Math.hypot(cur[0], cur[1] * 0.8));
-      const targetSpin = 1 + S.active * dist * 1.6;
-      S.spin += (targetSpin - S.spin) * Math.min(1, dt * 1.5);
-
-      const wind = {
-        x: clamp(cur[0], -1.2, 1.2) * 0.15 * S.active,
-        z: clamp(-cur[1] * 0.5, -0.6, 0.6) * 0.12 * S.active
-      };
-
-      ctx.clearRect(0, 0, S.w, S.h);
-
-      /* световой зал */
-      const hall = ctx.createRadialGradient(cam.cx, cam.cy - cam.R * 0.3, cam.R * 0.1, cam.cx, cam.cy + cam.R * 0.35, cam.R * 2.2);
-      hall.addColorStop(0, "rgba(160,140,140,0.14)");
-      hall.addColorStop(0.45, "rgba(110,80,80,0.05)");
-      hall.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = hall;
-      ctx.fillRect(0, 0, S.w, S.h);
-
-      drawParticles(cam, paused ? 0 : dt, paused);
-
-      /* раскладка */
-      laid.length = 0;
-      layout(MOBILE, ANCHOR, 0, paused ? 0 : S.spin, 0, wind, paused ? 0 : dt);
-
-      /* подвес от потолка */
-      const anc = project(ANCHOR, cam);
-      const top = project([ANCHOR[0], ANCHOR[1] - 1.2, ANCHOR[2]], cam);
-      drawWire([ANCHOR[0], ANCHOR[1] - 1.2, ANCHOR[2]], ANCHOR, cam, 2.2, 0.75);
-      ctx.fillStyle = "rgba(200,210,230,0.85)";
-      ctx.beginPath(); ctx.arc(anc[0], anc[1], 3, 0, Math.PI * 2); ctx.fill();
-      void top;
-
-      /* подвесы и элементы */
-      laid.forEach(function (node) {
-        (node.children || []).forEach(function (ch) {
-          void ch;
-        });
-      });
-      /* провода от балок к элементам */
-      laid.forEach(function (node) {
-        (node.ends || []).forEach(function (e) {
-          drawWire(e.anchor, e.pos, cam, 1.4, 0.8);
-        });
-      });
-      /* балки */
-      const byDepth = laid.slice().sort(function (a, b) { return a.pivot[2] - b.pivot[2]; });
-      byDepth.forEach(function (node) { drawBar(node, cam); });
-      byDepth.forEach(function (node) { drawElement(node, cam); });
-
-      setTimeout(function () { frame(performance.now()); }, 16);
+    function toUser(e) {
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      return pt.matrixTransform(svg.getScreenCTM().inverse());
     }
 
     function onMove(e) {
-      const rect = cv.getBoundingClientRect();
-      S.tx = e.clientX - rect.left;
-      S.ty = e.clientY - rect.top;
-      S.active = 1;
+      const p = toUser(e);
+      S.tx = p.x; S.ty = p.y;
+      S.inside = 1;
     }
     if (hero) {
       hero.addEventListener("pointermove", onMove);
-      hero.addEventListener("pointerleave", function () { S.active = 0; });
+      hero.addEventListener("pointerleave", function () { S.inside = 0; });
     }
-    cv.addEventListener("pointermove", onMove);
-    window.addEventListener("resize", function () { resize(); seedParticles(); });
 
-    resize();
-    seedParticles();
+    let last = 0;
+    function frame(ts) {
+      const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016;
+      last = ts;
+      const paused = document.body.dataset.motion === "off";
+
+      if (!paused) {
+        S.x += (S.tx - S.x) * Math.min(1, dt * 7);
+        S.y += (S.ty - S.y) * Math.min(1, dt * 7);
+      }
+      /* радиус свечения: ближе к фигуре — ярче и шире */
+      const heat = S.inside * (0.6 + 0.4 * Math.sin(ts / 900));
+      S.heat += (heat - S.heat) * Math.min(1, dt * 4);
+
+      grad.setAttribute("cx", S.x.toFixed(1));
+      grad.setAttribute("cy", S.y.toFixed(1));
+      grad.setAttribute("r", (150 + S.heat * 130).toFixed(1));
+      neon.setAttribute("opacity", (0.45 + S.heat * 0.6).toFixed(3));
+      if (rim) rim.setAttribute("opacity", (0.2 + S.heat * 0.24).toFixed(3));
+
+      setTimeout(function () { frame(performance.now()); }, 16);
+    }
     setTimeout(function () { frame(performance.now()); }, 16);
   }
 
@@ -1264,5 +907,5 @@
   renderGrid();
   observeReveals();
   initEmbers();
-  initCore();
+  initNeon();
 })();

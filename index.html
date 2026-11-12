@@ -79,8 +79,176 @@
 
       <div class="hero__piece">
         <div class="piece__glow" aria-hidden="true"></div>
-        <canvas class="piece" id="piece" width="1040" height="1040" aria-label="Интерактивная 3D-модель подвесной кинетической скульптуры: балки, диски и сферы, качающиеся за курсором"></canvas>
-        <p class="piece__caption"><span></span>Образец 00 · Подвесная кинетическая скульптура</p>
+        <svg class="thor" viewBox="52 -52 440 624" role="img" aria-label="Карандашный рисунок Тора с поднятым молотом; по контуру фигуры расходится неоновое свечение, зависящее от положения курсора">
+  <defs>
+    <!-- ===== материалы ===== -->
+    <linearGradient id="graphite" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#59657d"/>
+      <stop offset=".42" stop-color="#39414f"/>
+      <stop offset="1" stop-color="#232833"/>
+    </linearGradient>
+
+    <!-- неон по контуру: циан сверху → индиго → маджента -->
+    <linearGradient id="neonGrad" x1="150" y1="0" x2="470" y2="660" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67e8f9"/>
+      <stop offset=".32" stop-color="#818cf8"/>
+      <stop offset=".66" stop-color="#e879f9"/>
+      <stop offset="1" stop-color="#fb7185"/>
+    </linearGradient>
+
+    <!-- штриховка карандашом -->
+    <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+      <line x1="0" y1="0" x2="0" y2="7" stroke="#93a3bd" stroke-width="1" opacity=".5"/>
+    </pattern>
+    <pattern id="hatch2" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-62)">
+      <line x1="0" y1="0" x2="0" y2="5" stroke="#7d8ca6" stroke-width="1" opacity=".45"/>
+    </pattern>
+
+    <!-- ===== эффекты ===== -->
+    <!-- неоновая обводка по силуэту (цвет берётся из SourceGraphic) -->
+    <filter id="neonEdge" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceGraphic" operator="dilate" radius="2.4" result="dil"/>
+      <feComposite in="dil" in2="SourceAlpha" operator="out" result="edge"/>
+      <feGaussianBlur in="edge" stdDeviation="10" result="glow1"/>
+      <feGaussianBlur in="edge" stdDeviation="2" result="glow2"/>
+      <feMerge>
+        <feMergeNode in="glow1"/>
+        <feMergeNode in="glow1"/>
+        <feMergeNode in="glow2"/>
+        <feMergeNode in="edge"/>
+      </feMerge>
+    </filter>
+
+    <!-- карандашный контур: светлая полоса по краю силуэта -->
+    <filter id="pencilEdge" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.7" result="dil"/>
+      <feComposite in="dil" in2="SourceAlpha" operator="out" result="edge"/>
+      <feFlood flood-color="#b3c2da" flood-opacity=".9" result="ink"/>
+      <feComposite in="ink" in2="edge" operator="in"/>
+    </filter>
+
+    <!-- грубая «рука» + зерно бумаги -->
+    <filter id="sketch" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="17" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0.78  0 0 0 0 0.85  0 0 0 0 0.95  0 0 0 0.11 0" result="grainA"/>
+      <feComposite in="grainA" in2="rough" operator="in" result="grainIn"/>
+      <feMerge>
+        <feMergeNode in="rough"/>
+        <feMergeNode in="grainIn"/>
+      </feMerge>
+    </filter>
+
+    <!-- бумага -->
+    <filter id="paper" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="4" seed="3" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.72  0 0 0 0 0.78  0 0 0 0 0.9  0 0 0 0.08 0"/>
+    </filter>
+
+    <!-- маска, «зажигаемая» курсором -->
+    <radialGradient id="cursorGlowGrad" cx="300" cy="300" r="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="1"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="cursorMask" maskUnits="userSpaceOnUse" x="-120" y="-160" width="840" height="1040">
+      <rect x="-120" y="-160" width="840" height="1040" fill="url(#cursorGlowGrad)"/>
+    </mask>
+
+    <radialGradient id="vig" cx=".5" cy=".44" r=".74">
+      <stop offset=".55" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".6"/>
+    </radialGradient>
+
+    <!-- ===== силуэт Тора ===== -->
+    <g id="thorSil">
+      <!-- плащ -->
+      <path d="M268 176 C214 192 146 246 100 328 C66 392 74 470 116 528 C166 520 218 482 252 438 C278 404 292 350 296 300 C300 242 288 192 268 176 Z"/>
+      <!-- ноги -->
+      <path class="limb limb--leg" d="M322 330 C340 396 352 468 357 546"/>
+      <path class="limb limb--leg" d="M288 330 C270 396 256 468 249 548"/>      <!-- торс -->
+      <path d="M262 182 C250 212 252 262 266 302 C274 322 280 334 282 346 L330 346 C332 334 338 322 346 302 C360 258 360 210 348 182 C330 170 280 170 262 182 Z"/>
+      <!-- шея -->
+      <path d="M289 148 L321 148 L326 186 L284 186 Z"/>
+      <!-- голова -->
+      <path d="M305 84 C322 84 334 98 334 118 C334 140 322 154 305 154 C288 154 276 140 276 118 C276 98 288 84 305 84 Z"/>
+      <!-- шлем -->
+      <path d="M272 112 C272 86 286 70 305 70 C324 70 338 86 338 112 L330 112 C330 92 320 82 305 82 C290 82 280 92 280 112 Z"/>
+      <path d="M299 70 L311 70 L311 56 L299 56 Z"/>
+      <!-- поднятая рука -->
+      <path class="limb limb--arm" d="M338 192 C368 156 390 104 399 54"/>
+      <!-- рука в сторону -->
+      <path class="limb limb--arm" d="M266 192 C228 214 198 248 178 292"/>
+      <!-- молот -->
+      <path class="limb limb--handle" d="M399 14 L399 96"/>
+      <path d="M336 -40 L464 -40 L472 20 L328 20 Z"/>
+      <!-- сапоги -->
+      <path d="M337 506 C352 500 370 503 377 512 L383 550 L335 550 Z"/>
+      <path d="M228 508 C243 502 261 505 268 514 L274 552 L226 552 Z"/>
+    </g>
+  </defs>
+
+  <!-- бумага -->
+  <rect class="thor__paper" x="-60" y="-100" width="720" height="840" fill="#0e1016" filter="url(#paper)"/>
+
+  <!-- ===== карандашный рисунок ===== -->
+  <g class="thor__draw" filter="url(#sketch)">
+    <!-- масса фигуры -->
+    <use href="#thorSil" fill="url(#graphite)" stroke="#2b313d"/>
+    <!-- штриховка -->
+    <use href="#thorSil" fill="url(#hatch)" opacity=".5"/>
+    <use href="#thorSil" fill="url(#hatch2)" opacity=".26"/>
+    <!-- карандашный контур -->
+    <use href="#thorSil" fill="#000" filter="url(#pencilEdge)"/>
+
+    <!-- детали -->
+    <g class="thor__detail" fill="none" stroke="#aab9d0" stroke-width="1.6" stroke-linecap="round" opacity=".8">
+      <!-- нагрудные пластины -->
+      <circle cx="281" cy="238" r="33"/>
+      <circle cx="332" cy="238" r="33"/>
+      <path d="M281 205 L281 271 M251 238 L311 238"/>
+      <path d="M332 205 L332 271 M302 238 L362 238"/>
+      <!-- пояс и юбка -->
+      <path d="M266 300 C286 312 322 312 344 300"/>
+      <path d="M262 326 C286 336 322 336 348 326"/>
+      <path d="M272 344 L266 402 M338 344 L344 402"/>
+      <!-- лицо -->
+      <path d="M290 112 L300 109 M312 112 L322 109"/>
+      <path d="M305 110 L303 126 L309 128"/>
+      <path d="M292 140 C298 145 312 145 318 140"/>
+      <!-- крылья шлема -->
+      <path d="M276 104 L258 84 L280 92"/>
+      <path d="M334 104 L352 84 L330 92"/>
+      <!-- складки плаща -->
+      <path d="M252 198 C212 248 184 314 176 388"/>
+      <path d="M284 202 C260 256 246 322 242 392"/>
+      <path d="M232 214 C192 266 168 336 164 408" opacity=".55"/>
+      <!-- рукава -->
+      <path d="M328 208 C348 178 366 142 380 108"/>
+      <path d="M254 208 C230 224 204 248 188 276"/>
+      <!-- манжеты и сапоги -->
+      <path d="M391 60 L412 64 M389 48 L410 52"/>
+      <path d="M340 512 L378 516 M234 514 L270 518"/>
+      <!-- молот -->
+      <path d="M336 -40 L328 20 M464 -40 L472 20"/>
+      <path d="M352 -40 L346 20 M384 -40 L380 20 M416 -40 L414 20" opacity=".4"/>
+      <path d="M391 46 L391 82 M405 46 L405 82" opacity=".55"/>
+      <path d="M386 20 L414 20" opacity=".7"/>
+    </g>
+  </g>
+
+  <!-- постоянная слабая кромка -->
+  <use class="thor__rim" href="#thorSil" fill="url(#neonGrad)" stroke="url(#neonGrad)" filter="url(#neonEdge)" opacity=".22"/>
+
+  <!-- неон, «зажигаемый» курсором -->
+  <g class="thor__neon" mask="url(#cursorMask)">
+    <use href="#thorSil" fill="url(#neonGrad)" stroke="url(#neonGrad)" filter="url(#neonEdge)"/>
+  </g>
+
+  <rect x="-60" y="-100" width="720" height="840" fill="url(#vig)" pointer-events="none"/>
+</svg>
+        <p class="piece__caption"><span></span>Эскиз 00 · Тор, замах Мьёльниром</p>
       </div>
     </div>
 

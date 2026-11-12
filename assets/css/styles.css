@@ -254,14 +254,49 @@ body[data-motion="off"] .icon-btn__glyph::after { opacity: 0; }
   0%, 100% { transform: scale(.92); opacity: .75; }
   50%      { transform: scale(1.08); opacity: 1; }
 }
-.piece {
+
+/* --- рисунок Тора --- */
+.thor {
   position: relative;
-  width: min(100%, 540px); aspect-ratio: 1 / 1;
-  display: block; cursor: crosshair;
-  touch-action: pan-y;
+  width: min(100%, 520px);
+  max-height: min(64vh, 600px);
+  height: auto;
+  overflow: visible;
+  display: block;
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, .7));
 }
+.thor__paper { opacity: .5; }
+.thor__draw { opacity: .96; }
+.thor__detail { mix-blend-mode: screen; }
+.thor__rim { opacity: .26; }
+
+/* толщина конечностей (применяется во всех проходах: контур, масса, неон) */
+.limb--arm { stroke-width: 30px; }
+.limb--leg { stroke-width: 44px; }
+.limb--handle { stroke-width: 15px; }
+
+/* неон «зажигается» курсором */
+.thor__neon {
+  opacity: .95;
+  animation: neonFlicker 3.7s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+@keyframes neonFlicker {
+  0%, 100% { opacity: .82; }
+  22%      { opacity: 1; }
+  38%      { opacity: .74; }
+  54%      { opacity: .97; }
+  76%      { opacity: .86; }
+}
+/* лёгкое «дыхание» рисунка */
+.thor__draw { animation: thorBreathe 9s ease-in-out infinite; }
+@keyframes thorBreathe {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-5px) rotate(-.35deg); }
+}
+
 .piece__caption {
-  position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
   margin: 0; display: flex; align-items: center; gap: 12px; white-space: nowrap;
   font-family: var(--display); font-size: 10px; letter-spacing: .18em;
   text-transform: uppercase; color: var(--muted-2);
