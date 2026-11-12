@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MARVEL · Динамические скульптуры — кинетический архив</title>
+<meta name="description" content="Интерактивный каталог динамических скульптур супергероев Marvel: кинетические композиции из стали, титана и керамики, оживающие под действием света и движения.">
+<meta name="theme-color" content="#07080c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e62429'/%3E%3Cpath d='M16 5l2.9 7.1 7.6.5-5.8 5 1.9 7.4L16 21.4 9.4 25l1.9-7.4-5.8-5 7.6-.5z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body data-motion="on">
+
+<div class="scroll-progress" aria-hidden="true"><span id="progress-bar"></span></div>
+
+<!-- ============ HEADER ============ -->
+<header class="site-header" id="site-header">
+  <div class="wrap header__inner">
+    <a class="brand" href="#hero">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="26" height="26"><path d="M16 2.5l3.2 8 8.4.6-6.4 5.5 2.1 8.3L16 20.3l-7.3 4.6 2.1-8.3-6.4-5.5 8.4-.6z" fill="currentColor"/></svg>
+      </span>
+      <span class="brand__text">MARVEL<em>·</em>КИНЕТИЧЕСКИЙ АРХИВ</span>
+    </a>
+
+    <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="#collection">Коллекция</a>
+      <a href="#manifesto">Манифест</a>
+      <a href="#craft">Технология</a>
+      <a href="#hall">Зал</a>
+      <a href="#visit">Посещение</a>
+    </nav>
+
+    <div class="header__actions">
+      <button class="icon-btn" id="motion-toggle" type="button" aria-pressed="true" title="Остановить / запустить движение скульптур">
+        <span class="icon-btn__glyph" aria-hidden="true"></span>
+        <span class="icon-btn__label">Движение</span>
+      </button>
+      <button class="burger" id="burger" type="button" aria-label="Меню" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="hero">
+    <canvas class="hero__canvas" id="embers" aria-hidden="true"></canvas>
+    <div class="hero__grid" aria-hidden="true"></div>
+
+    <div class="wrap hero__inner">
+      <div class="hero__copy">
+        <p class="eyebrow"><span class="eyebrow__dot"></span>Выставка открыта · Коллекция 2026</p>
+        <h1 class="hero__title">
+          <span class="line">Динамические</span>
+          <span class="line line--accent">Скульптуры</span>
+          <span class="line line--muted">Вселенной Marvel</span>
+        </h1>
+        <p class="hero__lede">
+          Десять кинетических композиций из нержавеющей стали, титана и керамико-композита.
+          Каждая скульптура — застывший жест героя, который оживает: вращающиеся сердечники,
+          дрейфующие энергетические кольца, скульптурные «следы» движения в воздухе.
+        </p>
+        <div class="hero__cta">
+          <a class="btn btn--primary" href="#collection">Смотреть коллекцию</a>
+          <a class="btn btn--ghost" href="#manifesto">О проекте</a>
+        </div>
+        <dl class="hero__stats" id="hero-stats">
+          <div class="stat"><dt>Скульптур</dt><dd data-count="10">0</dd></div>
+          <div class="stat"><dt>Материалов</dt><dd data-count="12">0</dd></div>
+          <div class="stat"><dt>Лет в работе</dt><dd data-count="7">0</dd></div>
+          <div class="stat"><dt>Посетителей</dt><dd data-count="240" data-suffix=" тыс.">0</dd></div>
+        </dl>
+      </div>
+
+      <div class="hero__piece" aria-hidden="true">
+        <div class="piece__glow"></div>
+        <svg class="piece" viewBox="0 0 420 520" role="presentation">
+          <defs>
+            <linearGradient id="coreG" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ffd166"/>
+              <stop offset=".42" stop-color="#e62429"/>
+              <stop offset="1" stop-color="#5b1020"/>
+            </linearGradient>
+            <linearGradient id="steelG" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#f3f6ff"/>
+              <stop offset=".35" stop-color="#8d97ad"/>
+              <stop offset=".6" stop-color="#2b3140"/>
+              <stop offset="1" stop-color="#6d7689"/>
+            </linearGradient>
+            <linearGradient id="steelG2" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stop-color="#20242f"/>
+              <stop offset=".5" stop-color="#7d879c"/>
+              <stop offset="1" stop-color="#e9eefb"/>
+            </linearGradient>
+            <radialGradient id="auraG" cx=".5" cy=".5" r=".5">
+              <stop offset="0" stop-color="#e62429" stop-opacity=".5"/>
+              <stop offset="1" stop-color="#e62429" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <ellipse cx="210" cy="236" rx="195" ry="195" fill="url(#auraG)"/>
+
+          <g class="piece__rings">
+            <ellipse class="ring ring--1" cx="210" cy="240" rx="172" ry="56" fill="none" stroke="url(#steelG2)" stroke-width="3" stroke-dasharray="10 14"/>
+            <ellipse class="ring ring--2" cx="210" cy="236" rx="132" ry="132" fill="none" stroke="url(#steelG)" stroke-width="2.5" stroke-dasharray="4 12"/>
+            <ellipse class="ring ring--3" cx="210" cy="236" rx="84" ry="172" fill="none" stroke="url(#steelG2)" stroke-width="2" stroke-dasharray="18 9"/>
+          </g>
+
+          <g class="piece__core">
+            <polygon class="core__poly" points="210,118 272,168 258,254 210,312 162,254 148,168" fill="url(#coreG)" opacity=".92"/>
+            <polygon class="core__poly core__poly--b" points="210,118 272,168 258,254 210,312 162,254 148,168" fill="none" stroke="#ffe9b0" stroke-width="1.6" opacity=".5"/>
+            <polygon class="core__poly core__poly--c" points="210,160 246,190 236,240 210,268 184,240 174,190" fill="#ffe9b0" opacity=".16"/>
+          </g>
+
+          <g class="piece__nodes">
+            <circle class="node node--1" cx="210" cy="64" r="7"/>
+            <circle class="node node--2" cx="342" cy="236" r="5"/>
+            <circle class="node node--3" cx="78" cy="236" r="5"/>
+            <circle class="node node--4" cx="140" cy="392" r="4"/>
+            <circle class="node node--5" cx="286" cy="86" r="3.5"/>
+          </g>
+
+          <g class="piece__arc">
+            <path d="M116 186 L144 222 L136 230 L176 274 L168 282 L208 322" fill="none" stroke="#ffe9b0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
+          </g>
+
+          <g class="piece__base">
+            <ellipse cx="210" cy="438" rx="118" ry="24" fill="#0d1018" stroke="rgba(255,255,255,.12)"/>
+            <path d="M92 438 L102 486 L318 486 L328 438" fill="#0a0d14" stroke="rgba(255,255,255,.1)"/>
+            <ellipse cx="210" cy="486" rx="108" ry="18" fill="#080a10" stroke="rgba(255,255,255,.1)"/>
+            <text x="210" y="493" text-anchor="middle" class="piece__label">КИНЕТИЧЕСКИЙ ОБРАЗЕЦ № 00</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <a class="scroll-hint" href="#manifesto" aria-label="Листайте вниз — к следующему разделу">
+      <span class="scroll-hint__line"></span>
+      <span class="scroll-hint__text">Листайте вниз</span>
+    </a>
+  </section>
+
+  <!-- ============ MANIFESTO ============ -->
+  <section class="manifesto section" id="manifesto">
+    <div class="wrap manifesto__inner">
+      <div class="manifesto__lead reveal">
+        <p class="section__kicker">01 — Манифест</p>
+        <h2 class="section__title">Герой — это поза.<br><em>Скульптура — это движение.</em></h2>
+      </div>
+      <div class="manifesto__body reveal">
+        <p>
+          Мы фиксируем момент, в который супергерой перестаёт быть персонажем и становится
+          <strong>объектом</strong>: застывшим, но всё ещё наполненным энергией жестом.
+          Металл удерживает форму — кинетический механизм удерживает ощущение движения.
+        </p>
+        <p>
+          Внутри каждой композиции — сердечник, кольца-орбиты и сбалансированные противовесы.
+          Они вращаются с разной скоростью, поэтому скульптура никогда не выглядит
+          «замороженной кадровой»: она живёт по собственному, очень медленному циклу.
+        </p>
+        <ul class="manifesto__list">
+          <li><span>01</span> 48 полностью ручных операций на каждую модель</li>
+          <li><span>02</span> Механизм на скрытых магнитах и воздушных подшипниках</li>
+          <li><span>03</span> Светодиодная подсветка сердечника — 16 оттенков по сценарию</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COLLECTION ============ -->
+  <section class="collection section" id="collection">
+    <div class="wrap">
+      <div class="section__head reveal">
+        <div>
+          <p class="section__kicker">02 — Коллекция</p>
+          <h2 class="section__title">Динамические <em>скульптуры</em></h2>
+        </div>
+        <p class="section__note">
+          Нажмите на карточку, чтобы рассмотреть скульптуру на поворотном круге,
+          изучить спецификацию и статистику.
+        </p>
+      </div>
+
+      <div class="filters reveal" role="group" aria-label="Фильтр коллекции по категориям">
+        <button class="filter is-active" data-filter="all" aria-pressed="true">Все <span class="filter__count">10</span></button>
+        <button class="filter" data-filter="armor" aria-pressed="false">Броня</button>
+        <button class="filter" data-filter="cosmic" aria-pressed="false">Космос</button>
+        <button class="filter" data-filter="street" aria-pressed="false">Уличный уровень</button>
+        <button class="filter" data-filter="mystic" aria-pressed="false">Мистика</button>
+        <button class="filter" data-filter="outlaw" aria-pressed="false">Изгои</button>
+      </div>
+
+      <div class="grid" id="grid"></div>
+      <p class="grid__empty" id="grid-empty" hidden>В этой категории пока пусто. Выберите другой фильтр.</p>
+    </div>
+  </section>
+
+  <!-- ============ CRAFT ============ -->
+  <section class="craft section" id="craft">
+    <div class="wrap">
+      <div class="section__head reveal">
+        <div>
+          <p class="section__kicker">03 — Технология</p>
+          <h2 class="section__title">От глиняного <em>силуэта</em> к кинетическому оригиналу</h2>
+        </div>
+      </div>
+
+      <ol class="steps" id="steps">
+        <li class="step reveal">
+          <span class="step__num">01</span>
+          <h3>Силуэт</h3>
+          <p>Команда выбирает «неподвижный» кадр из сценария: 12–18 ключевых поз, из которых отбирается одна, способная читаться силуэтом с 360°.</p>
+          <span class="step__meta">Скульптор · 2 недели</span>
+        </li>
+        <li class="step reveal">
+          <span class="step__num">02</span>
+          <h3>Механизм</h3>
+          <p>Инженер рассчитывает оси вращения и центры масс. Сердечник прячется в полости груди, кольца-орбиты крепятся на скрытых магнитах.</p>
+          <span class="step__meta">Инженер-механик · 3 недели</span>
+        </li>
+        <li class="step reveal">
+          <span class="step__num">03</span>
+          <h3>Отливка</h3>
+          <p>Литьё в вакууме: бронза, нержавеющая сталь или керамико-композит. До 14 литьев, пока стенка не станет идеально ровной.</p>
+          <span class="step__meta">Литейный цех · 5 недель</span>
+        </li>
+        <li class="step reveal">
+          <span class="step__num">04</span>
+          <h3>Полировка</h3>
+          <p>Шестьдесят проходов шлифовки и патинирование. Цвет подбирается вручную, чтобы металл «помнил» костюм персонажа.</p>
+          <span class="step__meta">Реставратор · 3 недели</span>
+        </li>
+        <li class="step reveal">
+          <span class="step__num">05</span>
+          <h3>Оживление</h3>
+          <p>Сборка механизма, настройка сценария света и звука. Финальная проверка: композиция должна «звучать» даже без движения.</p>
+          <span class="step__meta">Сборка · 2 недели</span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ HALL ============ -->
+  <section class="hall section" id="hall">
+    <div class="hall__bg" aria-hidden="true"></div>
+    <div class="wrap hall__inner">
+      <p class="section__kicker reveal">04 — Зал</p>
+      <h2 class="section__title reveal">Главный зал<br><em>«Аврора»</em></h2>
+      <p class="hall__text reveal">
+        Десять композиций выстроены по кругу на вращающемся подиуме диаметром 22 метра.
+        За 19 минут зал делает полный оборот — и каждая скульптура оказывается
+        в своём «рекламном» ракурсе ровно в тот момент, когда гаснет верхний свет.
+      </p>
+      <div class="hall__facts reveal">
+        <div><strong>22 м</strong><span>диаметр подиума</span></div>
+        <div><strong>19 мин</strong><span>полный оборот</span></div>
+        <div><strong>1 200</strong><span>посетителей в сутки</span></div>
+        <div><strong>16</strong><span>цветовых сценариев</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VISIT ============ -->
+  <section class="visit section" id="visit">
+    <div class="wrap visit__inner">
+      <div class="visit__info reveal">
+        <p class="section__kicker">05 — Посещение</p>
+        <h2 class="section__title">Запись на <em>ночное открытие</em></h2>
+        <p class="visit__text">
+          В ночь открытия зал работает до 03:00, а свет сценариев переключается
+          каждые девять минут. Число мест ограничено — на сеанс допускается 80 человек.
+        </p>
+        <ul class="visit__list">
+          <li><span>Адрес</span> Зал «Аврора», павильон 4, наб. Канала Грибоедова, 12</li>
+          <li><span>Часы</span> Вт–Сб, 12:00 — 23:00 · Ночь открытия — до 03:00</li>
+          <li><span>Билеты</span> Стандарт 900 ₽ · Ночь открытия 1 500 ₽</li>
+        </ul>
+      </div>
+
+      <form class="visit__form reveal" id="visit-form" novalidate>
+        <h3>Забронировать место</h3>
+        <label class="field">
+          <span>Имя</span>
+          <input type="text" name="name" placeholder="Как к вам обращаться" required>
+        </label>
+        <label class="field">
+          <span>Почта</span>
+          <input type="email" name="email" placeholder="you@studio.art" required>
+        </label>
+        <label class="field">
+          <span>Дата сеанса</span>
+          <input type="date" name="date" required>
+        </label>
+        <label class="field">
+          <span>Сценарий света</span>
+          <select name="scenario">
+            <option value="classic">Классический — тёплый зал</option>
+            <option value="noir">Нуар — глубокие тени</option>
+            <option value="neon">Неон — холодное свечение</option>
+            <option value="solar">Солнечный — открытый свет</option>
+          </select>
+        </label>
+        <button class="btn btn--primary btn--full" type="submit">Записаться</button>
+        <p class="form__msg" id="form-msg" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="wrap footer__inner">
+    <div class="footer__brand">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="22" height="22"><path d="M16 2.5l3.2 8 8.4.6-6.4 5.5 2.1 8.3L16 20.3l-7.3 4.6 2.1-8.3-6.4-5.5 8.4-.6z" fill="currentColor"/></svg>
+      </span>
+      <p>Кинетический архив Marvel — цифровой каталог динамических скульптур.</p>
+    </div>
+    <nav class="footer__nav" aria-label="Подвал">
+      <a href="#collection">Коллекция</a>
+      <a href="#craft">Технология</a>
+      <a href="#visit">Посещение</a>
+    </nav>
+    <p class="footer__legal">
+      © 2026 Кинетический архив. Демонстрационный проект, не связанный с Marvel Entertainment.
+      Все скульптуры отрисованы в векторной графике.
+    </p>
+  </div>
+</footer>
+
+<!-- ============ MODAL ============ -->
+<div class="modal" id="modal" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <button class="modal__close" type="button" data-close aria-label="Закрыть">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+    </button>
+
+    <div class="modal__grid">
+      <div class="modal__stage">
+        <div class="modal__turn" id="m-turn"></div>
+        <div class="modal__controls">
+          <button class="ctrl-btn" id="m-spin" type="button" aria-pressed="false">
+            <span class="ctrl-btn__dot"></span> Автовращение
+          </button>
+          <label class="rotator">
+            <span>Поворот</span>
+            <input type="range" id="m-rot" min="-180" max="180" step="1" value="0" aria-label="Поворот скульптуры">
+          </label>
+        </div>
+      </div>
+
+      <div class="modal__info">
+        <p class="modal__num" id="m-num">№ 01</p>
+        <h2 id="m-title">—</h2>
+        <p class="modal__codename" id="m-codename">—</p>
+        <p class="modal__desc" id="m-desc">—</p>
+
+        <dl class="modal__specs" id="m-specs"></dl>
+
+        <div class="modal__stats" id="m-stats"></div>
+
+        <blockquote class="modal__quote" id="m-quote"></blockquote>
+
+        <div class="modal__nav">
+          <button class="btn btn--ghost btn--sm" id="m-prev" type="button">← Предыдущая</button>
+          <button class="btn btn--ghost btn--sm" id="m-next" type="button">Следующая →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/sculptures.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
