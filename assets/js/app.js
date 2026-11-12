@@ -996,9 +996,9 @@
         grad.setAttribute("cy", S.y.toFixed(1));
         grad.setAttribute("r", (110 + S.heat * 120).toFixed(1));
       }
-      if (neon) neon.setAttribute("opacity", (0.45 + S.heat * 0.55 + S.flash * 0.25).toFixed(3));
-      if (rim) rim.setAttribute("opacity", (0.12 + S.heat * 0.22 + S.flash * 0.18).toFixed(3));
-      if (runes) runes.setAttribute("opacity", (0.28 + S.heat * 0.72 + S.flash * 0.3).toFixed(3));
+      if (neon) neon.setAttribute("opacity", Math.min(1, 0.45 + S.heat * 0.55 + S.flash * 0.25).toFixed(3));
+      if (rim) rim.setAttribute("opacity", Math.min(1, 0.12 + S.heat * 0.22 + S.flash * 0.18).toFixed(3));
+      if (runes) runes.setAttribute("opacity", Math.min(1, 0.28 + S.heat * 0.72 + S.flash * 0.3).toFixed(3));
 
       /* ---- молнии ---- */
       if (ctx && !paused) {
