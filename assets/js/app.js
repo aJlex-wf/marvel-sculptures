@@ -846,7 +846,9 @@
   });
 
   /* ================================================================
-     Hero: кинетическое ядро — 3D-сцена на canvas, реагирует на курсор
+     Hero: подвесная кинетическая скульптура (мобиль)
+     3D-сцена на canvas: горизонтальные балки, диски, сферы, кольца, пыль.
+     Конструкция висит на подвесах и качается за курсором — как в «Зале».
      ================================================================ */
   function initCore() {
     const cv = $("#piece");
@@ -858,59 +860,67 @@
     const rotX = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; };
     const rotY = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; };
     const rotZ = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]]; };
-    const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
     const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const unit = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+    const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-    /* --- икосаэдр: 12 вершин, 20 граней --- */
-    const t = (1 + Math.sqrt(5)) / 2;
-    const ICO_V = [
-      [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
-      [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
-      [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]
-    ];
-    const ICO_F = [
-      [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
-      [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-      [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
-      [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
-    ];
-
-    /* --- орбитальные кольца --- */
-    const RINGS = [
-      { r: 1.00, tx: 1.40, ty: 0.10, spin: 0.26, phase: 0, w: 4.6, seg: 84, hue: 0 },
-      { r: 0.86, tx: 0.30, ty: 1.10, spin: -0.34, phase: 1.1, w: 3.4, seg: 84, hue: 1 },
-      { r: 0.72, tx: 1.05, ty: 0.95, spin: 0.46, phase: 2.3, w: 2.4, seg: 72, hue: 2 },
-      { r: 0.56, tx: 0.12, ty: 0.05, spin: -0.62, phase: 0.6, w: 1.8, seg: 64, hue: 1 },
-      { r: 1.14, tx: 1.55, ty: 0.62, spin: 0.16, phase: 3.4, w: 2.2, seg: 88, hue: 2 }
-    ];
-
-    /* --- состояние --- */
-    const S = {
-      w: 0, h: 0, dpr: 1,
-      px: 0, py: 0,          // курсор в координатах канваса
-      tx: 0, ty: 0,          // целевая позиция курсора
-      active: 0,             // 0..1 — наведение
-      tiltX: 0, tiltY: 0,    // наклон сцены
-      glow: 0,               // свечение ядра
-      t: 0
+    /* --- материалы --- */
+    const MAT = {
+      steel: { face: [58, 66, 82], rim: [150, 166, 194], edge: [216, 228, 248] },
+      red: { face: [118, 22, 28], rim: [206, 92, 78], edge: [248, 208, 168] },
+      gold: { face: [138, 98, 32], rim: [226, 190, 118], edge: [255, 242, 208] }
     };
 
+    /* --- дерево конструкции ---
+       drop  — длина подвеса балки от точки крепления
+       half  — половина длины балки
+       rate  — скорость вращения балки (рад/с)
+       ends  — что висит на концах балки
+       children — дочерние мобили, точка крепления at (смещение по балке) */
+    const MOBILE = {
+      drop: 0.50, half: 0.60, rate: 0.16, w: 5.2,
+      ends: [
+        { kind: "sphere", r: 0.072, color: "gold", wire: 0.17 },
+        { kind: "disc", r: 0.195, color: "red", wire: 0.21 }
+      ],
+      children: [
+        {
+          at: -0.22, drop: 0.44, half: 0.40, rate: -0.26, w: 3.6,
+          ends: [
+            { kind: "disc", r: 0.125, color: "steel", wire: 0.15 },
+            { kind: "sphere", r: 0.055, color: "gold", wire: 0.13 }
+          ],
+          children: [
+            {
+              at: 0.06, drop: 0.30, half: 0.24, rate: 0.42, w: 2.6,
+              ends: [{ kind: "ring", r: 0.105, color: "gold", wire: 0.11 }],
+              children: []
+            }
+          ]
+        },
+        {
+          at: 0.30, drop: 0.52, half: 0.30, rate: 0.31, w: 3.2,
+          ends: [{ kind: "disc", r: 0.145, color: "red", wire: 0.13 }],
+          children: []
+        }
+      ]
+    };
+
+    const ANCHOR = [0, -0.78, 0];
+
+    /* --- состояние --- */
+    const S = { w: 0, h: 0, dpr: 1, px: 0, py: 0, tx: 0, ty: 0, active: 0, spin: 1, t: 0 };
+
     const PARTICLES = [];
-    const PCOUNT = 220;
+    const PCOUNT = 190;
 
     function seedParticles() {
       PARTICLES.length = 0;
       for (let i = 0; i < PCOUNT; i++) {
-        const x = (Math.random() - 0.5) * 3.4;
-        const y = (Math.random() - 0.5) * 3.0;
-        const z = (Math.random() - 0.5) * 2.6;
-        PARTICLES.push({
-          x: x, y: y, z: z,
-          hx: x, hy: y, hz: z,
-          vx: 0, vy: 0, vz: 0,
-          r: Math.random() * 1.7 + 0.5,
-          a: Math.random() * 0.5 + 0.2
-        });
+        const x = (Math.random() - 0.5) * 3.2;
+        const y = (Math.random() - 0.5) * 3.2;
+        const z = (Math.random() - 0.5) * 2.4;
+        PARTICLES.push({ x: x, y: y, z: z, hx: x, hy: y, hz: z, vx: 0, vy: 0, vz: 0, r: Math.random() * 1.5 + 0.45, a: Math.random() * 0.5 + 0.18 });
       }
     }
 
@@ -924,287 +934,312 @@
       ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
     }
 
-    /* --- проекция --- */
     function makeCam() {
-      const R = Math.min(S.w, S.h) * 0.345;
-      return { cx: S.w * 0.5, cy: S.h * 0.46, R: R, f: 3.4 };
+      return { cx: S.w * 0.5, cy: S.h * 0.50, R: Math.min(S.w, S.h) * 0.46, f: 3.2, pitch: 0.46 };
     }
     function project(p, cam) {
-      const sc = cam.f / (cam.f - p[2]);
-      return [cam.cx + p[0] * cam.R * sc, cam.cy + p[1] * cam.R * sc, p[2], sc];
+      const q = rotX(p, -cam.pitch);
+      const sc = cam.f / (cam.f - q[2]);
+      return [cam.cx + q[0] * cam.R * sc, cam.cy + q[1] * cam.R * sc, q[2], sc];
     }
 
-    /* --- цвет стальной ленты по глубине и блику --- */
-    function steelRGB(lum, warm, bounce) {
-      const l = Math.max(0, Math.min(1.4, lum));
-      let r = 26 + 214 * l;
-      let g = 31 + 194 * l;
-      let b = 44 + 150 * l;
-      if (warm) { r += 16 * l; g -= 5 * l; b -= 20 * l; }
-      if (bounce) { r += 74 * bounce; g -= 16 * bounce; b -= 30 * bounce; }
-      return [Math.min(255, r), Math.min(255, g), Math.min(255, b)];
-    }
-    function steel(lum, warm, bounce) {
-      const c = steelRGB(lum, warm, bounce);
-      return "rgb(" + Math.round(c[0]) + "," + Math.round(c[1]) + "," + Math.round(c[2]) + ")";
+    /* --- раскладка: каскадная инерция от ветра --- */
+    const laid = [];
+    function layout(node, parentPoint, parentYaw, parentSpeed, depth, wind, dt) {
+      if (node.yaw === undefined) node.yaw = 0;
+      if (node.swx === undefined) node.swx = 0;
+      if (node.swz === undefined) node.swz = 0;
+      node.yaw += node.rate * dt * parentSpeed;
+
+      const lag = 1 / (1 + depth * 1.3);
+      const k = Math.min(1, dt * (3.2 - depth * 0.5));
+      node.swx += (wind.x * lag - node.swx) * k;
+      node.swz += (wind.z * lag - node.swz) * k;
+
+      const wy = parentYaw + node.yaw;
+      /* +y — вниз (как на экране) */
+      const hang = unit(rotX(rotZ([0, 1, 0], -node.swx), node.swz));
+      const pivot = [
+        parentPoint[0] + hang[0] * node.drop,
+        parentPoint[1] + hang[1] * node.drop,
+        parentPoint[2] + hang[2] * node.drop
+      ];
+      const bar = rotY([1, 0, 0], wy);
+
+      node.pivot = pivot; node.bar = bar; node.hang = hang; node.wy = wy;
+      /* исходные спецификации храним отдельно — иначе каждый кадр ломает данные */
+      if (!node.specs) node.specs = node.ends || [];
+      node.ends = node.specs.map(function (spec, i) {
+        const sgn = i === 0 ? 1 : -1;
+        const anchor = [pivot[0] + bar[0] * node.half * sgn, pivot[1], pivot[2] + bar[2] * node.half * sgn];
+        const w = spec.wire || 0.15;
+        return { spec: spec, anchor: anchor, pos: [anchor[0] + hang[0] * w, anchor[1] + hang[1] * w, anchor[2] + hang[2] * w] };
+      });
+      laid.push(node);
+
+      (node.children || []).forEach(function (ch) {
+        const at = ch.at || 0;
+        const attach = [pivot[0] + bar[0] * at, pivot[1], pivot[2] + bar[2] * at];
+        layout(ch, attach, wy, parentSpeed, depth + 1, wind, dt);
+      });
     }
 
-    const LIGHT = norm([-0.42, -0.72, 0.55]);      // ключевой
-    const BOUNCE = norm([0.12, 0.94, -0.32]);      // отражение снизу (тёплое)
+    /* --- отрисовка --- */
+    function shade(color, lum) {
+      const m = MAT[color];
+      const l = Math.max(0, Math.min(1.3, lum));
+      return "rgb(" + Math.round(m.face[0] + (m.rim[0] - m.face[0]) * l) + "," +
+        Math.round(m.face[1] + (m.rim[1] - m.face[1]) * l) + "," +
+        Math.round(m.face[2] + (m.rim[2] - m.face[2]) * l) + ")";
+    }
 
-    function drawRing(ring, cam, spin, alpha) {
-      const pts = [];
-      for (let i = 0; i <= ring.seg; i++) {
-        const a = (i / ring.seg) * Math.PI * 2;
-        let p = [Math.cos(a) * ring.r, Math.sin(a) * ring.r, 0];
-        p = rotZ(p, spin);
-        p = rotX(p, ring.tx);
-        p = rotY(p, ring.ty);
-        p = rotX(p, S.tiltX);
-        p = rotY(p, S.tiltY);
-        pts.push(project(p, cam));
-      }
-      /* тело ленты */
-      ctx.lineWidth = ring.w;
+    function drawWire(a, b, cam, width, alpha) {
+      const p = project(a, cam), q = project(b, cam);
+      const depth = clamp01((p[2] + 1.4) / 2.8);
       ctx.lineCap = "round";
-      for (let i = 0; i < ring.seg; i++) {
-        const p1 = pts[i], p2 = pts[i + 1];
-        const zm = (p1[2] + p2[2]) * 0.5;
-        const depth = clamp((zm + 1.3) / 2.6, 0, 1);
-        const a = (i / ring.seg) * Math.PI * 2;
-        const spec = 0.5 + 0.5 * Math.cos(a - 2.2);
-        const lum = 0.1 + depth * 0.55 + spec * 0.45;
-        ctx.strokeStyle = steel(lum * 0.75, ring.hue === 2);
-        ctx.globalAlpha = alpha * (0.32 + depth * 0.68);
-        ctx.beginPath();
-        ctx.moveTo(p1[0], p1[1]);
-        ctx.lineTo(p2[0], p2[1]);
-        ctx.stroke();
-      }
-      /* блик по верхней кромке */
-      ctx.lineWidth = Math.max(0.6, ring.w * 0.3);
-      for (let i = 0; i < ring.seg; i++) {
-        const p1 = pts[i], p2 = pts[i + 1];
-        const zm = (p1[2] + p2[2]) * 0.5;
-        const depth = clamp((zm + 1.3) / 2.6, 0, 1);
-        const a = (i / ring.seg) * Math.PI * 2;
-        const spec = Math.pow(0.5 + 0.5 * Math.cos(a - 2.2), 3);
-        if (spec < 0.35) continue;
-        ctx.strokeStyle = "rgba(255,238,214," + (spec * depth * 0.85 * alpha).toFixed(3) + ")";
-        ctx.globalAlpha = 1;
-        ctx.beginPath();
-        ctx.moveTo(p1[0] - 0.7, p1[1] - 0.9);
-        ctx.lineTo(p2[0] - 0.7, p2[1] - 0.9);
-        ctx.stroke();
-      }
-      /* узлы-крепления */
-      for (let i = 0; i < ring.seg; i += Math.max(12, Math.round(ring.seg / 4))) {
-        const p = pts[i];
-        const depth = clamp((p[2] + 1.3) / 2.6, 0, 1);
-        ctx.globalAlpha = alpha * (0.2 + depth * 0.7);
-        ctx.fillStyle = steel(0.55 + depth * 0.5, false);
-        ctx.beginPath();
-        ctx.arc(p[0], p[1], ring.w * 0.62, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
+      ctx.lineWidth = width * (0.7 + depth * 0.5);
+      ctx.strokeStyle = "rgba(12,14,20," + alpha + ")";
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+      ctx.lineWidth = Math.max(0.5, width * (0.7 + depth * 0.5) * 0.45);
+      ctx.strokeStyle = "rgba(" + Math.round(70 + depth * 150) + "," + Math.round(78 + depth * 162) + "," + Math.round(94 + depth * 172) + "," + alpha + ")";
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
     }
 
-    function drawCore(cam, spin) {
-      const R = 0.30;
-      /* 1) вращаем вершины в 3D */
-      const rv = ICO_V.map(function (v) {
-        let p = rotY(v, spin * 0.6);
-        p = rotX(p, spin * 0.25 + 0.4);
-        p = rotX(p, S.tiltX);
-        p = rotY(p, S.tiltY);
-        return [p[0] * R, p[1] * R, p[2] * R];
-      });
-      /* 2) проецируем */
-      const verts = rv.map(function (p) { return project(p, cam); });
+    function drawBar(node, cam) {
+      const a = [node.pivot[0] - node.bar[0] * node.half, node.pivot[1], node.pivot[2] - node.bar[2] * node.half];
+      const b = [node.pivot[0] + node.bar[0] * node.half, node.pivot[1], node.pivot[2] + node.bar[2] * node.half];
+      const p = project(a, cam), q = project(b, cam);
+      const depth = clamp01((p[2] + 1.4) / 2.8);
+      const w = node.w * (0.75 + depth * 0.55);
 
-      /* 3) нормали граней считаем в 3D */
-      const half = norm([LIGHT[0], LIGHT[1], LIGHT[2] + 1]);
-      const faces = ICO_F.map(function (f) {
-        const a = rv[f[0]], b = rv[f[1]], c = rv[f[2]];
-        const n = norm(cross(
-          [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
-          [c[0] - a[0], c[1] - a[1], c[2] - a[2]]
-        ));
-        const diff = Math.max(0, n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]);
-        const bounce = Math.max(0, n[0] * BOUNCE[0] + n[1] * BOUNCE[1] + n[2] * BOUNCE[2]);
-        const spec = Math.pow(Math.max(0, n[0] * half[0] + n[1] * half[1] + n[2] * half[2]), 26);
-        const rim = Math.pow(1 - Math.abs(n[2]), 3);
-        const z = (verts[f[0]][2] + verts[f[1]][2] + verts[f[2]][2]) / 3;
-        return { f: f, z: z, diff: diff, spec: spec, bounce: bounce, rim: rim };
-      }).sort(function (p, q) { return p.z - q.z; });
+      ctx.lineCap = "round";
+      /* тёмный контур */
+      ctx.lineWidth = w;
+      ctx.strokeStyle = "rgba(8,10,15,0.85)";
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
 
-      faces.forEach(function (fc) {
-        const a = verts[fc.f[0]], b = verts[fc.f[1]], c = verts[fc.f[2]];
-        const lum = 0.2 + fc.diff * 0.46 + fc.bounce * 0.16 + fc.rim * 0.24 + fc.spec * 0.7;
-        const rgb = steelRGB(lum * 0.62, true, fc.bounce * 0.8);
-        /* мягкий градиент внутри грани — от центра к источнику света */
-        const gx = (a[0] + b[0] + c[0]) / 3, gy = (a[1] + b[1] + c[1]) / 3;
-        const grad = ctx.createLinearGradient(gx, gy, gx + LIGHT[0] * 95, gy + LIGHT[1] * 95);
-        grad.addColorStop(0, "rgb(" + Math.round(Math.min(255, rgb[0] * 1.42)) + "," + Math.round(Math.min(255, rgb[1] * 1.42)) + "," + Math.round(Math.min(255, rgb[2] * 1.42)) + ")");
-        grad.addColorStop(0.55, "rgb(" + Math.round(rgb[0]) + "," + Math.round(rgb[1]) + "," + Math.round(rgb[2]) + ")");
-        grad.addColorStop(1, "rgb(" + Math.round(rgb[0] * 0.46) + "," + Math.round(rgb[1] * 0.46) + "," + Math.round(rgb[2] * 0.46) + ")");
-        ctx.beginPath();
-        ctx.moveTo(a[0], a[1]);
-        ctx.lineTo(b[0], b[1]);
-        ctx.lineTo(c[0], c[1]);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.globalAlpha = 0.97;
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255," + Math.round(214 + fc.diff * 41) + "," + Math.round(168 + fc.diff * 72) + "," + (0.05 + fc.diff * 0.3 + fc.spec * 0.45 + fc.rim * 0.22).toFixed(3) + ")";
-        ctx.lineWidth = 0.7;
-        ctx.globalAlpha = 1;
-        ctx.stroke();
-      });
-      ctx.globalAlpha = 1;
+      /* металлическое тело */
+      const g = ctx.createLinearGradient(p[0], p[1] - w * 0.5, q[0], q[1] - w * 0.5);
+      g.addColorStop(0, "rgba(" + Math.round(92 + depth * 128) + "," + Math.round(102 + depth * 140) + "," + Math.round(120 + depth * 150) + ",1)");
+      g.addColorStop(1, "rgba(" + Math.round(58 + depth * 92) + "," + Math.round(66 + depth * 102) + "," + Math.round(80 + depth * 112) + ",1)");
+      ctx.lineWidth = Math.max(1, w * 0.74);
+      ctx.strokeStyle = g;
+      ctx.beginPath(); ctx.moveTo(p[0], p[1] - w * 0.06); ctx.lineTo(q[0], q[1] - w * 0.06); ctx.stroke();
 
-      /* 4) свечение ядра поверх граней (bloom) */
-      ctx.globalCompositeOperation = "lighter";
-      const g = ctx.createRadialGradient(cam.cx, cam.cy, 0, cam.cx, cam.cy, cam.R * 0.78);
-      g.addColorStop(0, "rgba(255,206,140," + (0.14 + S.glow * 0.5).toFixed(3) + ")");
-      g.addColorStop(0.45, "rgba(226,74,54," + (0.07 + S.glow * 0.26).toFixed(3) + ")");
-      g.addColorStop(1, "rgba(230,36,41,0)");
+      /* блик по верхней кромке */
+      ctx.lineWidth = Math.max(0.5, w * 0.16);
+      ctx.strokeStyle = "rgba(255,247,230," + (0.14 + depth * 0.46).toFixed(3) + ")";
+      ctx.beginPath(); ctx.moveTo(p[0] - w * 0.22, p[1] - w * 0.36); ctx.lineTo(q[0] - w * 0.22, q[1] - w * 0.36); ctx.stroke();
+    }
+
+    function drawDisc(spec, pos, normal, axis, cam) {
+      const c = project(pos, cam);
+      const depth = clamp01((c[2] + 1.4) / 2.8);
+      const r = spec.r;
+      const u = unit(axis);
+      const v = unit(cross(normal, u));
+      const pu = project([pos[0] + u[0] * r, pos[1] + u[1] * r, pos[2] + u[2] * r], cam);
+      const pv = project([pos[0] + v[0] * r, pos[1] + v[1] * r, pos[2] + v[2] * r], cam);
+      const ru = Math.hypot(pu[0] - c[0], pu[1] - c[1]);
+      const rv = Math.hypot(pv[0] - c[0], pv[1] - c[1]);
+      const ang = Math.atan2(pu[1] - c[1], pu[0] - c[0]);
+      const mat = MAT[spec.color];
+      const lum = 0.3 + depth * 0.4;
+
+      ctx.save();
+      ctx.translate(c[0], c[1]);
+      ctx.rotate(ang);
+      /* толщина диска: нижняя кромка */
+      const th = Math.max(1.2, ru * 0.07);
+      ctx.fillStyle = shade(spec.color, lum * 0.22);
+      ctx.beginPath();
+      ctx.ellipse(0, th, Math.max(1, ru), Math.max(0.6, rv), 0, 0, Math.PI * 2);
+      ctx.fill();
+      const g = ctx.createLinearGradient(-ru, -rv, ru, rv);
+      g.addColorStop(0, shade(spec.color, lum * 0.5));
+      g.addColorStop(0.42, shade(spec.color, lum * 1.3));
+      g.addColorStop(1, shade(spec.color, lum * 0.45));
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(cam.cx, cam.cy, cam.R * 0.78, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, Math.max(1, ru), Math.max(0.6, rv), 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.globalCompositeOperation = "source-over";
+      ctx.lineWidth = Math.max(0.6, ru * 0.04);
+      ctx.strokeStyle = "rgba(" + mat.edge[0] + "," + mat.edge[1] + "," + mat.edge[2] + "," + (0.3 + depth * 0.45).toFixed(3) + ")";
+      ctx.stroke();
+      ctx.restore();
     }
 
+    function drawSphere(spec, pos, cam) {
+      const c = project(pos, cam);
+      const depth = clamp01((c[2] + 1.4) / 2.8);
+      const r = Math.max(2, spec.r * cam.R * c[3]);
+      const mat = MAT[spec.color];
+      const g = ctx.createRadialGradient(c[0] - r * 0.38, c[1] - r * 0.42, r * 0.04, c[0], c[1], r * 1.15);
+      g.addColorStop(0, "rgba(" + mat.edge[0] + "," + mat.edge[1] + "," + mat.edge[2] + ",1)");
+      g.addColorStop(0.38, shade(spec.color, 0.85));
+      g.addColorStop(1, shade(spec.color, 0.14));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(c[0], c[1], r, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = "rgba(" + mat.rim[0] + "," + mat.rim[1] + "," + mat.rim[2] + "," + (0.2 + depth * 0.35).toFixed(3) + ")";
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,252,240,0.9)";
+      ctx.beginPath(); ctx.arc(c[0] - r * 0.36, c[1] - r * 0.4, Math.max(0.6, r * 0.16), 0, Math.PI * 2); ctx.fill();
+    }
+
+    function drawRing(spec, pos, normal, axis, cam) {
+      const c = project(pos, cam);
+      const depth = clamp01((c[2] + 1.4) / 2.8);
+      const r = spec.r;
+      const u = unit(normal);
+      const v = unit(axis);
+      const pu = project([pos[0] + u[0] * r, pos[1] + u[1] * r, pos[2] + u[2] * r], cam);
+      const pv = project([pos[0] + v[0] * r, pos[1] + v[1] * r, pos[2] + v[2] * r], cam);
+      const ru = Math.hypot(pu[0] - c[0], pu[1] - c[1]);
+      const rv = Math.hypot(pv[0] - c[0], pv[1] - c[1]);
+      const ang = Math.atan2(pv[1] - c[1], pv[0] - c[0]);
+      const mat = MAT[spec.color];
+      ctx.save();
+      ctx.translate(c[0], c[1]);
+      ctx.rotate(ang);
+      ctx.lineWidth = Math.max(1, ru * 0.1);
+      const g = ctx.createLinearGradient(-ru, -rv, ru, rv);
+      g.addColorStop(0, "rgba(" + mat.face[0] + "," + mat.face[1] + "," + mat.face[2] + ",1)");
+      g.addColorStop(0.5, "rgba(" + mat.edge[0] + "," + mat.edge[1] + "," + mat.edge[2] + ",1)");
+      g.addColorStop(1, "rgba(" + mat.face[0] + "," + mat.face[1] + "," + mat.face[2] + ",1)");
+      ctx.strokeStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, Math.max(1, ru), Math.max(0.6, rv), 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      void depth;
+    }
+
+    function drawElement(node, cam) {
+      (node.ends || []).forEach(function (e) {
+        const spec = e.spec;
+        if (spec.kind === "disc") drawDisc(spec, e.pos, [-node.hang[0], -node.hang[1], -node.hang[2]], node.bar, cam);
+        else if (spec.kind === "sphere") drawSphere(spec, e.pos, cam);
+        else if (spec.kind === "ring") drawRing(spec, e.pos, node.hang, node.bar, cam);
+      });
+    }
+
+    /* --- пыль --- */
     function drawParticles(cam, dt, frozen) {
-      const attractR = 1.7;
-      /* экранные координаты курсора → система координат сцены (с учётом наклона) */
-      const cur = rotY(rotX([(S.px - cam.cx) / cam.R, (S.py - cam.cy) / cam.R, 0], -S.tiltX * 0.6), -S.tiltY * 0.6);
-      const ax = cur[0], ay = cur[1];
+      const attractR = 1.6;
+      const ax = (S.px - cam.cx) / cam.R, ay = (S.py - cam.cy) / cam.R;
       const active = frozen ? 0 : S.active;
       const step = Math.min(0.034, dt || 0.016);
 
       if (!frozen) {
         for (let i = 0; i < PARTICLES.length; i++) {
           const p = PARTICLES[i];
-          /* пружина к «дому» — удерживает поле в объёме */
-          let fx = (p.hx - p.x) * 2.2;
-          let fy = (p.hy - p.y) * 2.2;
-
+          let fx = (p.hx - p.x) * 2.0, fy = (p.hy - p.y) * 2.0;
           if (active > 0.01) {
             const dx = ax - p.x, dy = ay - p.y;
             const d = Math.hypot(dx, dy);
             if (d < attractR && d > 0.0001) {
-              const f = (1 - d / attractR) * 26 * active;
+              const f = (1 - d / attractR) * 20 * active;
               const nx = dx / d, ny = dy / d;
-              /* притяжение + завихрение вокруг курсора */
-              fx += nx * f - ny * f * 0.72;
-              fy += ny * f + nx * f * 0.72;
-              /* совсем близкие частицы «прилипают» к курсору */
-              if (d < attractR * 0.3) {
-                p.x += (ax - p.x) * 0.1;
-                p.y += (ay - p.y) * 0.1;
-              }
+              fx += nx * f - ny * f * 0.8;
+              fy += ny * f + nx * f * 0.8;
+              if (d < attractR * 0.28) { p.x += (ax - p.x) * 0.09; p.y += (ay - p.y) * 0.09; }
             }
           }
-
           p.vx = (p.vx + fx * step) * 0.9;
           p.vy = (p.vy + fy * step) * 0.9;
           p.vz = (p.vz + (p.hz - p.z) * 1.4 * step) * 0.94;
-          p.vx += (Math.random() - 0.5) * 0.0022;
-          p.vy += (Math.random() - 0.5) * 0.0022;
-          p.x += p.vx * step;
-          p.y += p.vy * step;
-          p.z += p.vz * step;
+          p.vx += (Math.random() - 0.5) * 0.0018;
+          p.vy += (Math.random() - 0.5) * 0.0018;
+          p.x += p.vx * step; p.y += p.vy * step; p.z += p.vz * step;
         }
       }
 
-      /* рисуем сзади → впереди */
       const sorted = PARTICLES.slice().sort(function (a, b) { return a.z - b.z; });
       for (let i = 0; i < sorted.length; i++) {
         const p = sorted[i];
-        let q = rotX([p.x, p.y, p.z], S.tiltX * 0.6);
-        q = rotY(q, S.tiltY * 0.6);
-        const s = project(q, cam);
-        const depth = clamp((s[2] + 1.3) / 2.6, 0, 1);
-        const near = active > 0.01
-          ? clamp(1 - Math.hypot(ax - p.x, ay - p.y) / attractR, 0, 1) * active
-          : 0;
+        const s = project([p.x, p.y, p.z], cam);
+        const depth = clamp01((s[2] + 1.4) / 2.8);
+        const near = active > 0.01 ? clamp01(1 - Math.hypot(ax - p.x, ay - p.y) / attractR) * active : 0;
         const alpha = (0.05 + depth * 0.3 + near * 0.5) * p.a;
-        const r = p.r * (0.5 + depth * 0.65) * (1 - near * 0.35);
+        const r = p.r * (0.5 + depth * 0.6) * (1 - near * 0.3);
         ctx.beginPath();
         ctx.arc(s[0], s[1], r, 0, Math.PI * 2);
         ctx.fillStyle = near > 0.05
           ? "rgba(255,214,150," + Math.min(0.95, alpha * 1.7).toFixed(3) + ")"
-          : "rgba(176,192,222," + Math.min(0.55, alpha).toFixed(3) + ")";
+          : "rgba(180,196,226," + Math.min(0.55, alpha).toFixed(3) + ")";
         ctx.fill();
       }
     }
 
+    /* --- главный кадр --- */
     function frame(ts) {
       const dt = Math.min(0.05, (ts - (frame.last || ts)) / 1000);
       frame.last = ts;
       const paused = document.body.dataset.motion === "off";
-
-      if (!paused) S.t += dt;
-      const t = S.t;
-
-        /* курсор → наклон */
-      if (!paused) {
-        S.px += (S.tx - S.px) * Math.min(1, dt * 14);
-        S.py += (S.ty - S.py) * Math.min(1, dt * 14);
-      }
-      const nx = clamp((S.px - S.w * 0.5) / (S.w * 0.5), -1.6, 1.6);
-      const ny = clamp((S.py - S.h * 0.5) / (S.h * 0.5), -1.6, 1.6);
-      if (!paused) {
-        S.tiltY += (nx * 0.30 - S.tiltY) * Math.min(1, dt * 3.2);
-        S.tiltX += (ny * 0.20 - S.tiltX) * Math.min(1, dt * 3.2);
-        /* ядро разгорается, когда курсор рядом */
-        const near = S.active * clamp(1 - Math.hypot(nx, ny) / 0.85, 0, 1);
-        S.glow += (near - S.glow) * Math.min(1, dt * 2.6);
-      }
       const cam = makeCam();
+
+      if (!paused) {
+        S.px += (S.tx - S.px) * Math.min(1, dt * 9);
+        S.py += (S.ty - S.py) * Math.min(1, dt * 9);
+        S.t += dt;
+      }
+
+      /* курсор → ветер и скорость вращения */
+      const cur = [(S.px - cam.cx) / cam.R, (S.py - cam.cy) / cam.R];
+      const dist = Math.min(1.5, Math.hypot(cur[0], cur[1] * 0.8));
+      const targetSpin = 1 + S.active * dist * 1.6;
+      S.spin += (targetSpin - S.spin) * Math.min(1, dt * 1.5);
+
+      const wind = {
+        x: clamp(cur[0], -1.2, 1.2) * 0.15 * S.active,
+        z: clamp(-cur[1] * 0.5, -0.6, 0.6) * 0.12 * S.active
+      };
 
       ctx.clearRect(0, 0, S.w, S.h);
 
-      /* мягкая тень-подложка */
-      const sh = ctx.createRadialGradient(cam.cx, cam.cy + cam.R * 0.12, cam.R * 0.2, cam.cx, cam.cy, cam.R * 1.75);
-      sh.addColorStop(0, "rgba(150,120,110,0.14)");
-      sh.addColorStop(1, "rgba(120,140,180,0)");
-      ctx.fillStyle = sh;
+      /* световой зал */
+      const hall = ctx.createRadialGradient(cam.cx, cam.cy - cam.R * 0.3, cam.R * 0.1, cam.cx, cam.cy + cam.R * 0.35, cam.R * 2.2);
+      hall.addColorStop(0, "rgba(160,140,140,0.14)");
+      hall.addColorStop(0.45, "rgba(110,80,80,0.05)");
+      hall.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = hall;
       ctx.fillRect(0, 0, S.w, S.h);
 
-      /* частицы — дальний план */
       drawParticles(cam, paused ? 0 : dt, paused);
 
-      /* механизм разгоняется, когда курсор у ядра */
-      if (!paused) {
-        const boost = 1 + S.glow * 1.8;
-        RINGS.forEach(function (r) { r.phase += r.spin * boost * dt; });
-      }
+      /* раскладка */
+      laid.length = 0;
+      layout(MOBILE, ANCHOR, 0, paused ? 0 : S.spin, 0, wind, paused ? 0 : dt);
 
-      /* кольца: дальние первыми */
-      const order = RINGS.map(function (r) {
-        let n = rotX([0, 0, 1], r.tx);
-        n = rotY(n, r.ty);
-        n = rotX(n, S.tiltX);
-        n = rotY(n, S.tiltY);
-        return { r: r, z: n[2] };
-      }).sort(function (a, b) { return a.z - b.z; });
+      /* подвес от потолка */
+      const anc = project(ANCHOR, cam);
+      const top = project([ANCHOR[0], ANCHOR[1] - 1.2, ANCHOR[2]], cam);
+      drawWire([ANCHOR[0], ANCHOR[1] - 1.2, ANCHOR[2]], ANCHOR, cam, 2.2, 0.75);
+      ctx.fillStyle = "rgba(200,210,230,0.85)";
+      ctx.beginPath(); ctx.arc(anc[0], anc[1], 3, 0, Math.PI * 2); ctx.fill();
+      void top;
 
-      order.forEach(function (o) {
-        drawRing(o.r, cam, o.r.phase, 1);
+      /* подвесы и элементы */
+      laid.forEach(function (node) {
+        (node.children || []).forEach(function (ch) {
+          void ch;
+        });
       });
+      /* провода от балок к элементам */
+      laid.forEach(function (node) {
+        (node.ends || []).forEach(function (e) {
+          drawWire(e.anchor, e.pos, cam, 1.4, 0.8);
+        });
+      });
+      /* балки */
+      const byDepth = laid.slice().sort(function (a, b) { return a.pivot[2] - b.pivot[2]; });
+      byDepth.forEach(function (node) { drawBar(node, cam); });
+      byDepth.forEach(function (node) { drawElement(node, cam); });
 
-      /* ядро */
-      drawCore(cam, t);
-
-      /* цикл на таймере: rAF может быть задушен в фоновых вкладках */
       setTimeout(function () { frame(performance.now()); }, 16);
     }
 
-    /* --- курсор --- */
     function onMove(e) {
       const rect = cv.getBoundingClientRect();
       S.tx = e.clientX - rect.left;
@@ -1216,11 +1251,7 @@
       hero.addEventListener("pointerleave", function () { S.active = 0; });
     }
     cv.addEventListener("pointermove", onMove);
-
-    window.addEventListener("resize", function () {
-      resize();
-      seedParticles();
-    });
+    window.addEventListener("resize", function () { resize(); seedParticles(); });
 
     resize();
     seedParticles();
